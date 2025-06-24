@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RdfExplorer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🕸️ RdfExplorer</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
+                    📁 Importer RDF
+                </button>
+                <input type="file" id="fileInput" accept=".ttl" style="display: none;">
+                <button class="btn btn-primary">💾 Sauvegarder</button>
+                <button class="btn btn-primary">📤 Exporter</button>
+            </div>
+        </header>
+
+        <!-- Sidebar - Contrôles -->
+        <aside class="sidebar">
+            <!-- Import/Export -->
+            <div class="panel">
+                <div class="panel-header">📂 Fichiers</div>
+                <div class="panel-content">
+                    <button class="btn btn-secondary">Charger configuration JSON</button>
+                    <button class="btn btn-secondary">Exporter PNG/SVG</button>
+                </div>
+            </div>
+
+            <!-- Filtres d'affichage -->
+            <div class="panel">
+                <div class="panel-header">🔍 Filtres d'affichage</div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label>Degré minimum</label>
+                        <input type="range" class="range-input" min="0" max="10" value="1">
+                        <div class="range-labels">
+                            <span>0</span>
+                            <span>5</span>
+                            <span>10+</span>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Types RDF à afficher</label>
+                        <div class="checkbox-group">
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="type1" checked>
+                                <label for="type1">foaf:Person</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="type2" checked>
+                                <label for="type2">dbo:Organization</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="type3">
+                                <label for="type3">dbo:Place</label>
+                            </div>
+                            <div class="checkbox-item">
+                                <input type="checkbox" id="type4" checked>
+                                <label for="type4">skos:Concept</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Apparence -->
+            <div class="panel">
+                <div class="panel-header">🎨 Apparence</div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label>Couleur des nœuds</label>
+                        <select class="form-control">
+                            <option>Par type RDF</option>
+                            <option>Par degré</option>
+                            <option>Par communauté</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Taille des nœuds</label>
+                        <select class="form-control">
+                            <option>Par degré entrant</option>
+                            <option>Par degré sortant</option>
+                            <option>Par degré total</option>
+                        </select>
+                    </div>
+                    
+                    <div class="color-legend">
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #ff6b6b;"></div>
+                            <span>Person</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #4ecdc4;"></div>
+                            <span>Org</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #45b7d1;"></div>
+                            <span>Place</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-color" style="background: #96ceb4;"></div>
+                            <span>Concept</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exploration -->
+            <div class="panel">
+                <div class="panel-header">🧭 Exploration</div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label>Nœud de départ</label>
+                        <input type="text" class="form-control" placeholder="ex: dbr:Paris">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Profondeur</label>
+                        <input type="range" class="range-input" min="1" max="5" value="2">
+                        <div class="range-labels">
+                            <span>1</span>
+                            <span>3</span>
+                            <span>5</span>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-secondary">🎯 Explorer depuis ce nœud</button>
+                    
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Recherche de chemin</label>
+                        <input type="text" class="form-control" placeholder="Nœud d'arrivée" style="margin-bottom: 5px;">
+                        <button class="btn btn-secondary">⚡ Chemin le plus court</button>
+                        <button class="btn btn-secondary">🗺️ Tous les chemins</button>
+                    </div>
+                    
+                    <div class="path-display">
+                        <strong>Chemin trouvé:</strong><br>
+                        A → relation1 → B → relation2 → C
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Zone principale - Graphe -->
+        <main class="main-area">
+            <div class="graph-container">
+                <div class="graph-overlay">
+                    📊 Graphe: 2,547 nœuds • 8,923 arêtes • Zoom: 85%
+                </div>
+                
+                <!-- Graphe mockup -->
+                <div class="mock-graph">
+                    <!-- Arêtes -->
+                    <div class="mock-edge edge-1"></div>
+                    <div class="mock-edge edge-2"></div>
+                    <div class="mock-edge edge-3"></div>
+                    <div class="mock-edge edge-4"></div>
+                    <div class="mock-edge edge-5"></div>
+                    
+                    <!-- Nœuds -->
+                    <div class="mock-node node-central">C</div>
+                    <div class="mock-node node-a">A</div>
+                    <div class="mock-node node-b">B</div>
+                    <div class="mock-node node-c">D</div>
+                    <div class="mock-node node-d">E</div>
+                    <div class="mock-node node-e">F</div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Toolbar droite - Analyses -->
+        <aside class="toolbar">
+            <!-- Informations sur le nœud sélectionné -->
+            <div class="panel">
+                <div class="panel-header">ℹ️ Nœud sélectionné</div>
+                <div class="panel-content">
+                    <strong>dbr:Albert_Einstein</strong><br>
+                    <small>Type: foaf:Person</small>
+                    <div style="margin: 10px 0;">
+                        <div class="stats-item">
+                            <span>Degré entrant:</span>
+                            <span class="stats-value">247</span>
+                        </div>
+                        <div class="stats-item">
+                            <span>Degré sortant:</span>
+                            <span class="stats-value">89</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary">🔍 Explorer depuis ce nœud</button>
+                </div>
+            </div>
+
+            <!-- Statistiques -->
+            <div class="panel">
+                <div class="panel-header">📈 Statistiques</div>
+                <div class="panel-content">
+                    <div class="stats-item">
+                        <span>Triplets totaux:</span>
+                        <span class="stats-value">15,847</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Nœuds uniques:</span>
+                        <span class="stats-value">2,547</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Prédicats uniques:</span>
+                        <span class="stats-value">156</span>
+                    </div>
+                    <div class="stats-item">
+                        <span>Nœuds isolés:</span>
+                        <span class="stats-value">23</span>
+                    </div>
+                    
+                    <div style="margin-top: 15px;">
+                        <label style="font-size: 13px; font-weight: 600;">Distribution par type:</label>
+                        <div class="stats-item">
+                            <span>foaf:Person</span>
+                            <span class="stats-value">847</span>
+                        </div>
+                        <div class="stats-item">
+                            <span>dbo:Organization</span>
+                            <span class="stats-value">234</span>
+                        </div>
+                        <div class="stats-item">
+                            <span>dbo:Place</span>
+                            <span class="stats-value">156</span>
+                        </div>
+                        <div class="stats-item">
+                            <span>skos:Concept</span>
+                            <span class="stats-value">1,310</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Prédicats -->
+            <div class="panel">
+                <div class="panel-header">🔗 Prédicats actifs</div>
+                <div class="panel-content">
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="pred1" checked>
+                            <label for="pred1">dbo:birthPlace</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="pred2" checked>
+                            <label for="pred2">foaf:knows</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="pred3">
+                            <label for="pred3">dbo:almaMater</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="pred4" checked>
+                            <label for="pred4">dct:subject</label>
+                        </div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="pred5">
+                            <label for="pred5">dbo:influenced</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aperçu mini-graphe -->
+            <div class="panel">
+                <div class="panel-header">🗺️ Vue d'ensemble</div>
+                <div class="panel-content">
+                    <div class="node-preview">
+                        <div class="sample-nodes">
+                            <div class="connection-line line-1"></div>
+                            <div class="connection-line line-2"></div>
+                            <div class="connection-line line-3"></div>
+                            <div class="sample-node node-1"></div>
+                            <div class="sample-node node-2"></div>
+                            <div class="sample-node node-3"></div>
+                            <div class="sample-node node-4"></div>
+                            <div class="sample-node node-5"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="script.js"></script>
+
+</body>
+</html>
