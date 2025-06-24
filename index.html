@@ -12,26 +12,17 @@
         <header class="header">
             <h1>🕸️ RdfExplorer</h1>
             <div class="header-actions">
-                <button class="btn btn-primary" onclick="document.getElementById('fileInput').click()">
-                    📁 Importer RDF
-                </button>
+                <button class="btn btn-primary">📁 Importer Configuration (JSON)</button>
+                <button class="btn btn-primary">📁 Importer RDF</button>
                 <input type="file" id="fileInput" accept=".ttl" style="display: none;">
                 <button class="btn btn-primary">💾 Sauvegarder</button>
-                <button class="btn btn-primary">📤 Exporter</button>
+                <button class="btn btn-primary">📤 Exporter (RDF+Config)</button>
+                <button class="btn btn-primary">📤 Exporter (SVG ou PNG)</button>
             </div>
         </header>
 
         <!-- Sidebar - Contrôles -->
         <aside class="sidebar">
-            <!-- Import/Export -->
-            <div class="panel">
-                <div class="panel-header">📂 Fichiers</div>
-                <div class="panel-content">
-                    <button class="btn btn-secondary">Charger configuration JSON</button>
-                    <button class="btn btn-secondary">Exporter PNG/SVG</button>
-                </div>
-            </div>
-
             <!-- Filtres d'affichage -->
             <div class="panel">
                 <div class="panel-header">🔍 Filtres d'affichage</div>
@@ -41,12 +32,12 @@
                         <input type="range" class="range-input" min="0" max="10" value="1">
                         <div class="range-labels">
                             <span>0</span>
-                            <span>5</span>
-                            <span>10+</span>
+                            <span>TODO</span>
+                            <span>TODO</span>
                         </div>
                     </div>
                     
-                    <div class="form-group">
+                    <div class="form-group"> <!--//TODO : Extraire les rdf:type-->
                         <label>Types RDF à afficher</label>
                         <div class="checkbox-group">
                             <div class="checkbox-item">
@@ -92,8 +83,8 @@
                         </select>
                     </div>
                     
-                    <div class="color-legend">
-                        <div class="legend-item">
+                    <div class="color-legend"> <!-- //TODO : Extraire les types ou les degrés et definir la couleur-->
+                        <div class="legend-item"> 
                             <div class="legend-color" style="background: #ff6b6b;"></div>
                             <span>Person</span>
                         </div>
@@ -118,17 +109,17 @@
                 <div class="panel-header">🧭 Exploration</div>
                 <div class="panel-content">
                     <div class="form-group">
-                        <label>Nœud de départ</label>
+                        <label>Nœud de départ</label> 
                         <input type="text" class="form-control" placeholder="ex: dbr:Paris">
                     </div>
                     
                     <div class="form-group">
                         <label>Profondeur</label>
-                        <input type="range" class="range-input" min="1" max="5" value="2">
+                        <input type="range" class="range-input">
                         <div class="range-labels">
                             <span>1</span>
-                            <span>3</span>
-                            <span>5</span>
+                            <span>TODO</span>
+                            <span>TODO</span>
                         </div>
                     </div>
                     
@@ -140,10 +131,10 @@
                         <button class="btn btn-secondary">⚡ Chemin le plus court</button>
                         <button class="btn btn-secondary">🗺️ Tous les chemins</button>
                     </div>
-                    
-                    <div class="path-display">
-                        <strong>Chemin trouvé:</strong><br>
-                        A → relation1 → B → relation2 → C
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Reinitialisation</label>
+                        <button class="btn btn-secondary">🔄 Reinitialiser le graphe</button>
                     </div>
                 </div>
             </div>
@@ -153,7 +144,7 @@
         <main class="main-area">
             <div class="graph-container">
                 <div class="graph-overlay">
-                    📊 Graphe: 2,547 nœuds • 8,923 arêtes • Zoom: 85%
+                    📊 Graphe: TODO nœuds • TODO arêtes • Zoom: TODO%
                 </div>
                 
                 <!-- Graphe mockup -->
@@ -187,11 +178,11 @@
                     <div style="margin: 10px 0;">
                         <div class="stats-item">
                             <span>Degré entrant:</span>
-                            <span class="stats-value">247</span>
+                            <span class="stats-value">TODO</span>
                         </div>
                         <div class="stats-item">
                             <span>Degré sortant:</span>
-                            <span class="stats-value">89</span>
+                            <span class="stats-value">TODO</span>
                         </div>
                     </div>
                     <button class="btn btn-secondary">🔍 Explorer depuis ce nœud</button>
@@ -204,38 +195,38 @@
                 <div class="panel-content">
                     <div class="stats-item">
                         <span>Triplets totaux:</span>
-                        <span class="stats-value">15,847</span>
+                        <span class="stats-value">TODO</span>
                     </div>
                     <div class="stats-item">
                         <span>Nœuds uniques:</span>
-                        <span class="stats-value">2,547</span>
+                        <span class="stats-value">TODO</span>
                     </div>
                     <div class="stats-item">
                         <span>Prédicats uniques:</span>
-                        <span class="stats-value">156</span>
+                        <span class="stats-value">TODO</span>
                     </div>
                     <div class="stats-item">
                         <span>Nœuds isolés:</span>
-                        <span class="stats-value">23</span>
+                        <span class="stats-value">TODO</span>
                     </div>
                     
                     <div style="margin-top: 15px;">
                         <label style="font-size: 13px; font-weight: 600;">Distribution par type:</label>
                         <div class="stats-item">
                             <span>foaf:Person</span>
-                            <span class="stats-value">847</span>
+                            <span class="stats-value">TODO</span>
                         </div>
                         <div class="stats-item">
                             <span>dbo:Organization</span>
-                            <span class="stats-value">234</span>
+                            <span class="stats-value">TODO</span>
                         </div>
                         <div class="stats-item">
                             <span>dbo:Place</span>
-                            <span class="stats-value">156</span>
+                            <span class="stats-value">TODO</span>
                         </div>
                         <div class="stats-item">
                             <span>skos:Concept</span>
-                            <span class="stats-value">1,310</span>
+                            <span class="stats-value">TODO</span>
                         </div>
                     </div>
                 </div>
@@ -243,7 +234,7 @@
 
             <!-- Prédicats -->
             <div class="panel">
-                <div class="panel-header">🔗 Prédicats actifs</div>
+                <div class="panel-header">🔗 Prédicats actifs</div> <!-- //TODO : Extraire les prédicats-->
                 <div class="panel-content">
                     <div class="checkbox-group">
                         <div class="checkbox-item">
@@ -275,7 +266,7 @@
                 <div class="panel-header">🗺️ Vue d'ensemble</div>
                 <div class="panel-content">
                     <div class="node-preview">
-                        <div class="sample-nodes">
+                        <div class="sample-nodes"> <!-- //TODO : Extraire une vue d'ensemble-->
                             <div class="connection-line line-1"></div>
                             <div class="connection-line line-2"></div>
                             <div class="connection-line line-3"></div>
