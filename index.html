@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RdfExplorer</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="app-container">
         <!-- Header -->
@@ -17,7 +19,7 @@
                 <input type="file" id="fileInput" accept=".ttl" style="display: none;">
                 <button class="btn btn-primary">💾 Sauvegarder</button>
                 <button class="btn btn-primary">📤 Exporter (RDF+Config)</button>
-                <button class="btn btn-primary">📤 Exporter (SVG ou PNG)</button>
+                <button class="btn btn-primary" id="exportSVGBtn">📤 Exporter SVG</button>
             </div>
         </header>
 
@@ -28,7 +30,7 @@
                 <div class="panel-header">🔍 Filtres d'affichage</div>
                 <div class="panel-content">
                     <div class="form-group">
-                        <label>Degré minimum</label>
+                        <label>Degré minimum : <span id="minDegreeValue">0</span></label>
                         <input type="range" class="range-input" min="0" max="10" value="1">
                         <div class="range-labels">
                             <span>0</span>
@@ -36,27 +38,10 @@
                             <span>TODO</span>
                         </div>
                     </div>
-                    
+
                     <div class="form-group"> <!--//TODO : Extraire les rdf:type-->
-                        <label>Types RDF à afficher</label>
-                        <div class="checkbox-group">
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="type1" checked>
-                                <label for="type1">foaf:Person</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="type2" checked>
-                                <label for="type2">dbo:Organization</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="type3">
-                                <label for="type3">dbo:Place</label>
-                            </div>
-                            <div class="checkbox-item">
-                                <input type="checkbox" id="type4" checked>
-                                <label for="type4">skos:Concept</label>
-                            </div>
-                        </div>
+                        <label>Types RDF à afficher (noeuds)</label>
+                        <div class="checkbox-group"></div>
                     </div>
                 </div>
             </div>
@@ -67,13 +52,14 @@
                 <div class="panel-content">
                     <div class="form-group">
                         <label>Couleur des nœuds</label>
-                        <select class="form-control">
+                        <select class="form-control" id="nodeColorModeSelect">
                             <option>Par type RDF</option>
-                            <option>Par degré</option>
-                            <option>Par communauté</option>
-                        </select>
+                            <option>Par degré entrant</option>
+                            <option>Par degré sortant</option>
+                            <option>Par degré total</option>
+                        </select>                        
                     </div>
-                    
+
                     <div class="form-group">
                         <label>Taille des nœuds</label>
                         <select class="form-control">
@@ -82,9 +68,9 @@
                             <option>Par degré total</option>
                         </select>
                     </div>
-                    
-                    <div class="color-legend"> <!-- //TODO : Extraire les types ou les degrés et definir la couleur-->
-                        <div class="legend-item"> 
+
+                    <div class="color-legend" id="colorLegend">                        <!-- //TODO : Extraire les types ou les degrés et definir la couleur-->
+                        <div class="legend-item">
                             <div class="legend-color" style="background: #ff6b6b;"></div>
                             <span>Person</span>
                         </div>
@@ -109,10 +95,12 @@
                 <div class="panel-header">🧭 Exploration</div>
                 <div class="panel-content">
                     <div class="form-group">
-                        <label>Nœud de départ</label> 
+                        <label>Nœud de départ</label>
                         <input type="text" class="form-control" placeholder="ex: dbr:Paris">
                     </div>
-                    
+
+                    <button class="btn btn-secondary">🔰​ Sélectionner départ</button>
+
                     <div class="form-group">
                         <label>Profondeur</label>
                         <input type="range" class="range-input">
@@ -123,18 +111,20 @@
                         </div>
                     </div>
                     
-                    <button class="btn btn-secondary">🎯 Explorer depuis ce nœud</button>
-                    
+                    <button class="btn btn-secondary">🎯 Explorer en profondeur</button>
+
                     <div class="form-group" style="margin-top: 15px;">
                         <label>Recherche de chemin</label>
-                        <input type="text" class="form-control" placeholder="Nœud d'arrivée" style="margin-bottom: 5px;">
+                        <input type="text" class="form-control" placeholder="Nœud d'arrivée"
+                            style="margin-bottom: 5px;">
+                        <button class="btn btn-secondary">🛑​ Sélectionner arrivée</button>
                         <button class="btn btn-secondary">⚡ Chemin le plus court</button>
                         <button class="btn btn-secondary">🗺️ Tous les chemins</button>
                     </div>
 
                     <div class="form-group" style="margin-top: 15px;">
                         <label>Reinitialisation</label>
-                        <button id="resetGraphBtn" class="btn btn-secondary">🔄 Reinitialiser le graphe</button>
+                        <button id="resetGraphBtn" class="btn btn-secondary">🔄 Supprimer le graphe</button>
                     </div>
                 </div>
             </div>
@@ -144,7 +134,7 @@
         <main class="main-area">
             <div class="graph-container">
                 <div class="graph-overlay">
-                    📊 Graphe: TODO nœuds • TODO arêtes • Zoom: TODO%
+                    📊 Graphe: 0 nœuds • 0 arêtes • <span id="zoom">Zoom : 100%</span>
                 </div>
             </div>
         </main>
@@ -155,19 +145,7 @@
             <div class="panel">
                 <div class="panel-header">ℹ️ Nœud sélectionné</div>
                 <div class="panel-content">
-                    <strong>dbr:Albert_Einstein</strong><br>
-                    <small>Type: foaf:Person</small>
-                    <div style="margin: 10px 0;">
-                        <div class="stats-item">
-                            <span>Degré entrant:</span>
-                            <span class="stats-value">TODO</span>
-                        </div>
-                        <div class="stats-item">
-                            <span>Degré sortant:</span>
-                            <span class="stats-value">TODO</span>
-                        </div>
-                    </div>
-                    <button class="btn btn-secondary">🔍 Explorer depuis ce nœud</button>
+                    <strong>Cliquez sur un noeud</strong><br>
                 </div>
             </div>
 
@@ -191,7 +169,7 @@
                         <span>Nœuds isolés:</span>
                         <span class="stats-value">TODO</span>
                     </div>
-                    
+
                     <div style="margin-top: 15px;">
                         <label style="font-size: 13px; font-weight: 600;">Distribution par type:</label>
                         <div class="stats-item">
@@ -220,25 +198,10 @@
                 <div class="panel-content">
                     <div class="checkbox-group">
                         <div class="checkbox-item">
-                            <input type="checkbox" id="pred1" checked>
-                            <label for="pred1">dbo:birthPlace</label>
+                            <input type="checkbox" id="hideIsolatedNodes">
+                            <label for="hideIsolatedNodes">Masquer les nœuds isolés</label>
                         </div>
-                        <div class="checkbox-item">
-                            <input type="checkbox" id="pred2" checked>
-                            <label for="pred2">foaf:knows</label>
-                        </div>
-                        <div class="checkbox-item">
-                            <input type="checkbox" id="pred3">
-                            <label for="pred3">dbo:almaMater</label>
-                        </div>
-                        <div class="checkbox-item">
-                            <input type="checkbox" id="pred4" checked>
-                            <label for="pred4">dct:subject</label>
-                        </div>
-                        <div class="checkbox-item">
-                            <input type="checkbox" id="pred5">
-                            <label for="pred5">dbo:influenced</label>
-                        </div>
+
                     </div>
                 </div>
             </div>
@@ -248,16 +211,7 @@
                 <div class="panel-header">🗺️ Vue d'ensemble</div>
                 <div class="panel-content">
                     <div class="node-preview">
-                        <div class="sample-nodes"> <!-- //TODO : Extraire une vue d'ensemble-->
-                            <div class="connection-line line-1"></div>
-                            <div class="connection-line line-2"></div>
-                            <div class="connection-line line-3"></div>
-                            <div class="sample-node node-1"></div>
-                            <div class="sample-node node-2"></div>
-                            <div class="sample-node node-3"></div>
-                            <div class="sample-node node-4"></div>
-                            <div class="sample-node node-5"></div>
-                        </div>
+                        <svg id="miniMapSvg" width="100%" height="100%"></svg>
                     </div>
                 </div>
             </div>
@@ -268,4 +222,5 @@
     <script src="https://unpkg.com/n3@1.14.0/browser/n3.min.js"></script>
     <script src="script.js"></script>
 </body>
+
 </html>
