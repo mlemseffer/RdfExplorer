@@ -13,7 +13,7 @@
             <h1>🕸️ RdfExplorer</h1>
             <div class="header-actions">
                 <button class="btn btn-primary">📁 Importer Configuration (JSON)</button>
-                <button class="btn btn-primary">📁 Importer RDF</button>
+                <button class="btn btn-primary" id="importRDFBtn">📁 Importer RDF</button>
                 <input type="file" id="fileInput" accept=".ttl" style="display: none;">
                 <button class="btn btn-primary">💾 Sauvegarder</button>
                 <button class="btn btn-primary">📤 Exporter (RDF+Config)</button>
@@ -134,7 +134,7 @@
 
                     <div class="form-group" style="margin-top: 15px;">
                         <label>Reinitialisation</label>
-                        <button class="btn btn-secondary">🔄 Reinitialiser le graphe</button>
+                        <button id="resetGraphBtn" class="btn btn-secondary">🔄 Reinitialiser le graphe</button>
                     </div>
                 </div>
             </div>
@@ -145,24 +145,6 @@
             <div class="graph-container">
                 <div class="graph-overlay">
                     📊 Graphe: TODO nœuds • TODO arêtes • Zoom: TODO%
-                </div>
-                
-                <!-- Graphe mockup -->
-                <div class="mock-graph">
-                    <!-- Arêtes -->
-                    <div class="mock-edge edge-1"></div>
-                    <div class="mock-edge edge-2"></div>
-                    <div class="mock-edge edge-3"></div>
-                    <div class="mock-edge edge-4"></div>
-                    <div class="mock-edge edge-5"></div>
-                    
-                    <!-- Nœuds -->
-                    <div class="mock-node node-central">C</div>
-                    <div class="mock-node node-a">A</div>
-                    <div class="mock-node node-b">B</div>
-                    <div class="mock-node node-c">D</div>
-                    <div class="mock-node node-d">E</div>
-                    <div class="mock-node node-e">F</div>
                 </div>
             </div>
         </main>
@@ -282,7 +264,8 @@
         </aside>
     </div>
 
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/n3@1.14.0/browser/n3.min.js"></script>
     <script src="script.js"></script>
-
 </body>
 </html>
