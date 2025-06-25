@@ -13,7 +13,7 @@ body {
 
 .app-container {
     display: grid;
-    grid-template-areas: 
+    grid-template-areas:
         "header header header"
         "sidebar main toolbar"
         "sidebar main toolbar";
@@ -29,7 +29,7 @@ body {
     display: flex;
     align-items: center;
     padding: 0 20px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .header h1 {
@@ -53,13 +53,13 @@ body {
 }
 
 .btn-primary {
-    background: rgba(255,255,255,0.2);
+    background: rgba(255, 255, 255, 0.2);
     color: white;
-    border: 1px solid rgba(255,255,255,0.3);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .btn-primary:hover {
-    background: rgba(255,255,255,0.3);
+    background: rgba(255, 255, 255, 0.3);
 }
 
 .sidebar {
@@ -67,7 +67,7 @@ body {
     background: white;
     border-right: 1px solid #e1e8ed;
     overflow-y: auto;
-    box-shadow: 2px 0 10px rgba(0,0,0,0.05);
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
 }
 
 .panel {
@@ -160,10 +160,10 @@ body {
     position: absolute;
     top: 15px;
     left: 15px;
-    background: rgba(255,255,255,0.95);
+    background: rgba(255, 255, 255, 0.95);
     padding: 10px 15px;
     border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     font-size: 13px;
     color: #4a5568;
 }
@@ -173,7 +173,7 @@ body {
     background: white;
     border-left: 1px solid #e1e8ed;
     overflow-y: auto;
-    box-shadow: -2px 0 10px rgba(0,0,0,0.05);
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
 }
 
 .stats-item {
@@ -211,14 +211,44 @@ body {
     border-radius: 50%;
     position: absolute;
     border: 2px solid white;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
-.node-1 { background: #ff6b6b; top: -20px; left: -10px; }
-.node-2 { background: #4ecdc4; top: 10px; left: 20px; width: 25px; height: 25px; }
-.node-3 { background: #45b7d1; top: -10px; left: -25px; width: 15px; height: 15px; }
-.node-4 { background: #96ceb4; top: 25px; left: -5px; }
-.node-5 { background: #feca57; top: 5px; left: -30px; width: 18px; height: 18px; }
+.node-1 {
+    background: #ff6b6b;
+    top: -20px;
+    left: -10px;
+}
+
+.node-2 {
+    background: #4ecdc4;
+    top: 10px;
+    left: 20px;
+    width: 25px;
+    height: 25px;
+}
+
+.node-3 {
+    background: #45b7d1;
+    top: -10px;
+    left: -25px;
+    width: 15px;
+    height: 15px;
+}
+
+.node-4 {
+    background: #96ceb4;
+    top: 25px;
+    left: -5px;
+}
+
+.node-5 {
+    background: #feca57;
+    top: 5px;
+    left: -30px;
+    width: 18px;
+    height: 18px;
+}
 
 .connection-line {
     position: absolute;
@@ -228,9 +258,23 @@ body {
     transform-origin: left center;
 }
 
-.line-1 { width: 30px; left: -5px; transform: rotate(30deg); }
-.line-2 { width: 25px; left: 10px; transform: rotate(-45deg); }
-.line-3 { width: 20px; left: -15px; transform: rotate(60deg); }
+.line-1 {
+    width: 30px;
+    left: -5px;
+    transform: rotate(30deg);
+}
+
+.line-2 {
+    width: 25px;
+    left: 10px;
+    transform: rotate(-45deg);
+}
+
+.line-3 {
+    width: 20px;
+    left: -15px;
+    transform: rotate(60deg);
+}
 
 .btn-secondary {
     background: #f8fafc;
@@ -300,14 +344,14 @@ body {
     position: absolute;
     border-radius: 50%;
     border: 3px solid white;
-    box-shadow: 0 3px 8px rgba(0,0,0,0.15);
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.15);
     display: flex;
     align-items: center;
     justify-content: center;
     font-size: 10px;
     font-weight: bold;
     color: white;
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
 .mock-edge {
@@ -318,16 +362,86 @@ body {
 }
 
 /* Positions pour les nœuds du graphe mockup */
-.node-central { width: 40px; height: 40px; background: #667eea; top: 80px; left: 130px; }
-.node-a { width: 30px; height: 30px; background: #ff6b6b; top: 20px; left: 50px; }
-.node-b { width: 35px; height: 35px; background: #4ecdc4; top: 40px; left: 220px; }
-.node-c { width: 25px; height: 25px; background: #45b7e1; top: 140px; left: 40px; }
-.node-d { width: 30px; height: 30px; background: #96ceb4; top: 160px; left: 200px; }
-.node-e { width: 28px; height: 28px; background: #feca57; top: 100px; left: 20px; }
+.node-central {
+    width: 40px;
+    height: 40px;
+    background: #667eea;
+    top: 80px;
+    left: 130px;
+}
+
+.node-a {
+    width: 30px;
+    height: 30px;
+    background: #ff6b6b;
+    top: 20px;
+    left: 50px;
+}
+
+.node-b {
+    width: 35px;
+    height: 35px;
+    background: #4ecdc4;
+    top: 40px;
+    left: 220px;
+}
+
+.node-c {
+    width: 25px;
+    height: 25px;
+    background: #45b7e1;
+    top: 140px;
+    left: 40px;
+}
+
+.node-d {
+    width: 30px;
+    height: 30px;
+    background: #96ceb4;
+    top: 160px;
+    left: 200px;
+}
+
+.node-e {
+    width: 28px;
+    height: 28px;
+    background: #feca57;
+    top: 100px;
+    left: 20px;
+}
 
 /* Arêtes du graphe mockup */
-.edge-1 { width: 85px; top: 91px; left: 135px; transform: rotate(-25deg); }
-.edge-2 { width: 75px; top: 91px; left: 155px; transform: rotate(15deg); }
-.edge-3 { width: 95px; top: 95px; left: 115px; transform: rotate(35deg); }
-.edge-4 { width: 70px; top: 95px; left: 110px; transform: rotate(55deg); }
-.edge-5 { width: 110px; top: 89px; left: 40px; transform: rotate(-15deg); }
+.edge-1 {
+    width: 85px;
+    top: 91px;
+    left: 135px;
+    transform: rotate(-25deg);
+}
+
+.edge-2 {
+    width: 75px;
+    top: 91px;
+    left: 155px;
+    transform: rotate(15deg);
+}
+
+.edge-3 {
+    width: 95px;
+    top: 95px;
+    left: 115px;
+    transform: rotate(35deg);
+}
+
+.edge-4 {
+    width: 70px;
+    top: 95px;
+    left: 110px;
+    transform: rotate(55deg);
+}
+
+.edge-5 {
+    width: 110px;
+    top: 89px;
+    left: 40px;
+    transform: rotate(-15deg);
+}
