@@ -10,11 +10,19 @@ class RdfExplorer {
         this.activePredicates = new Set();
         this.activeTypes = new Set();
         this.hideIsolatedNodes = false;
+        this.showEdgeLabels = false;
         this.minDegreeFilter = 0;
         this.nodeSizeMode = 'in'; // 'in', 'out', 'total'
         this.nodeColorMode = 'type'; // 'type' or 'degree'
         this.visibleNodes = [];
         this.visibleLinks = [];
+
+        this.startNodeInput = document.querySelector('.panel-content input.form-control[placeholder^="ex"]');
+        this.startNode = null;
+
+        this.endNodeInput = document.querySelector('.form-group input.form-control[placeholder="Nœud d\'arrivée"]');
+        this.endNode = null;
+
         this.init();
     }
 
@@ -28,6 +36,23 @@ class RdfExplorer {
             document.getElementById('fileInput').click();
         });
 
+        document.getElementById('exportRDFConfigBtn').addEventListener('click', () => {
+            this.exportVisibleRDFandConfig();
+        });        
+
+        document.getElementById('importConfigBtn').addEventListener('click', () => {
+            document.getElementById('configInput').click();
+        });
+        
+        document.getElementById('configInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file && file.name.endsWith('.json')) {
+                this.loadConfigFile(file);
+            } else {
+                alert('Veuillez sélectionner un fichier .json');
+            }
+        });        
+
         document.getElementById('fileInput').addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file && file.name.endsWith('.ttl')) {
@@ -37,13 +62,23 @@ class RdfExplorer {
             }
         });
 
-        document.getElementById('resetGraphBtn').addEventListener('click', () => {
-            this.resetGraph();
+        document.getElementById('deleteGraphBtn').addEventListener('click', () => {
+            this.deleteGraph();
         });
+
+        document.getElementById('resetGraphBtn').addEventListener('click', () => {
+            this.resetGraphView();
+        });
+        
 
         document.getElementById('exportSVGBtn').addEventListener('click', () => {
             this.exportSVG();
         });
+
+        document.getElementById('showEdgeLabels').addEventListener('change', (e) => {
+            this.showEdgeLabels = e.target.checked;
+            this.renderGraph();
+        });        
 
         document.getElementById('hideIsolatedNodes').addEventListener('change', (e) => {
             this.hideIsolatedNodes = e.target.checked;
@@ -76,11 +111,67 @@ class RdfExplorer {
             this.renderGraph();
         });
 
+        const depthRangeInput = document.getElementById('depthRange');
+        depthRangeInput.addEventListener('input', (e) => {
+            const value = parseInt(e.target.value);
+            document.getElementById('depthValue').textContent = value;
+            // Optionnel : ici tu peux appeler une méthode d’exploration à profondeur limitée
+            // this.applyDepthLimit(value);
+        });
+
+        // Autocomplétion dans le champ "nœud de départ"
+        this.startNodeInput.addEventListener('input', () => this.showAutocomplete());
+        this.startNodeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.selectNodeFromInput(this.startNodeInput.value);
+        });
+
+        // Bouton "Sélectionner départ"
+        document.querySelectorAll('button.btn.btn-secondary').forEach(btn => {
+            if (btn.textContent.includes('Sélectionner départ')) {
+                btn.addEventListener('click', () => {
+                    const value = this.startNodeInput.value.trim();
+                    if (value === '' && this.selectedNode) {
+                        this.setStartNode(this.selectedNode);
+                    } else {
+                        this.selectNodeFromInput(value);
+                    }
+                });
+            }
+        });        
+
+        this.endNodeInput.addEventListener('input', () => this.showAutocomplete(this.endNodeInput, 'end'));
+        this.endNodeInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') this.selectNodeFromInput(this.endNodeInput.value, 'end');
+        });
+
+        document.querySelectorAll('button.btn.btn-secondary').forEach(btn => {
+            if (btn.textContent.includes('Sélectionner arrivée')) {
+                btn.addEventListener('click', () => {
+                    const value = this.endNodeInput.value.trim();
+                    if (value === '' && this.selectedNode) {
+                        this.setEndNode(this.selectedNode);
+                    } else {
+                        this.selectNodeFromInput(value, 'end');
+                    }
+                });
+            }
+        });        
+        
+        this.exploreDirectionSelect = document.getElementById('edgeDirectionSelect');
+        document.getElementById('depthExploreBtn').addEventListener('click', () => {
+            const maxDepth = parseInt(document.getElementById('depthRange').value);
+            this.exploreFromStartNode(maxDepth, 1000); // 1 seconde
+        });     
+        
+        document.getElementById('shortestPathBtn').addEventListener('click', () => {
+            this.findShortestPath();
+        });        
+
     }
 
     async loadRDFFile(file) {
         try {
-            this.resetGraph();
+            this.deleteGraph();
 
             const content = await this.readFileContent(file);
             const triples = await this.parseWithN3(content);
@@ -185,7 +276,7 @@ class RdfExplorer {
 
     extractActivePredicates() {
         const predicateSet = new Set(this.graph.triples.map(t => t.predicate));
-        const container = document.querySelectorAll('.toolbar .panel')[2].querySelector('.panel-content');
+        const container = document.querySelectorAll('.toolbar .panel')[3].querySelector('.panel-content');
 
         container.innerHTML = '<div class="checkbox-group"></div>';
         const group = container.querySelector('.checkbox-group');
@@ -328,14 +419,14 @@ class RdfExplorer {
             if (this.nodeColorMode === 'in') degreeAccessor = d => d.inDegree;
             else if (this.nodeColorMode === 'out') degreeAccessor = d => d.outDegree;
             else degreeAccessor = d => d.inDegree + d.outDegree;
-
+    
             const maxDegree = d3.max(this.graph.nodes, degreeAccessor);
             colorScale = d3.scaleLinear()
                 .domain([0, maxDegree])
                 .range(["#F1A7A7", "#580E0E"]);
             this.updateColorLegend(null);
         }
-
+    
         // Taille des nœuds
         const sizeAccessor = d => {
             if (this.nodeSizeMode === 'in') return d.inDegree;
@@ -370,10 +461,23 @@ class RdfExplorer {
             visibleNodeIds.has(typeof l.source === 'object' ? l.source.id : l.source) &&
             visibleNodeIds.has(typeof l.target === 'object' ? l.target.id : l.target)
         );
-
+    
         this.visibleNodes = visibleNodes;
         this.visibleLinks = visibleLinks;
 
+        // Vérifie si le noeud de départ est toujours visible, sinon le réinitialiser
+        if (this.startNode && !visibleNodeIds.has(this.startNode.id)) {
+            this.startNode = null;
+            this.startNodeInput.value = '';
+        }
+
+        // Vérifie si le noeud d’arrivée est toujours visible, sinon le réinitialiser
+        if (this.endNode && !visibleNodeIds.has(this.endNode.id)) {
+            this.endNode = null;
+            this.endNodeInput.value = '';
+}
+
+    
         this.simulation = d3.forceSimulation(visibleNodes)
             .force('link', d3.forceLink(visibleLinks).id(d => d.id).distance(100))
             .force('charge', d3.forceManyBody().strength(-200))
@@ -390,15 +494,21 @@ class RdfExplorer {
             .attr('stroke-width', 2)
             .attr('stroke-opacity', 0.7);
     
-        const linkLabels = this.svg.select('.zoom-group .links')
-            .selectAll('text')
-            .data(visibleLinks)
-            .enter().append('text')
-            .text(d => this.extractLabel(d.predicate))
-            .attr('font-size', '12px')
-            .attr('text-anchor', 'middle')
-            .style('fill', '#666')
-            .style('pointer-events', 'none');
+        const linkLabelSelection = this.svg.select('.zoom-group .links').selectAll('text');
+        linkLabelSelection.remove();
+    
+        let linkLabels = null;
+        if (this.showEdgeLabels) {
+            linkLabels = this.svg.select('.zoom-group .links')
+                .selectAll('text')
+                .data(visibleLinks)
+                .enter().append('text')
+                .text(d => this.extractLabel(d.predicate))
+                .attr('font-size', '12px')
+                .attr('text-anchor', 'middle')
+                .style('fill', '#666')
+                .style('pointer-events', 'none');
+        }
     
         const node = this.svg.select('.zoom-group .nodes')
             .selectAll('circle')
@@ -411,13 +521,24 @@ class RdfExplorer {
                 if (this.nodeColorMode === 'out') return colorScale(d.outDegree);
                 return colorScale(d.inDegree + d.outDegree);
             })
-            .attr('stroke', 'white')
-            .attr('stroke-width', 2)
             .style('cursor', 'pointer')
             .call(d3.drag()
                 .on('start', (event, d) => this.dragstarted(event, d))
                 .on('drag', (event, d) => this.dragged(event, d))
-                .on('end', (event, d) => this.dragended(event, d)));
+                .on('end', (event, d) => this.dragended(event, d)))
+
+            
+            .attr('stroke', d => {
+                if (d === this.startNode) return 'green';
+                if (d === this.endNode) return 'red';
+                return 'white';
+            })
+            .attr('stroke-width', d => {
+                if (d === this.startNode || d === this.endNode) return 4;
+                return 2;
+            })
+                
+                
     
         const labels = this.svg.select('.zoom-group .nodes')
             .selectAll('text')
@@ -440,9 +561,11 @@ class RdfExplorer {
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
     
-            linkLabels
-                .attr('x', d => (d.source.x + d.target.x) / 2)
-                .attr('y', d => (d.source.y + d.target.y) / 2);
+            if (linkLabels) {
+                linkLabels
+                    .attr('x', d => (d.source.x + d.target.x) / 2)
+                    .attr('y', d => (d.source.y + d.target.y) / 2);
+            }
     
             node
                 .attr('cx', d => d.x)
@@ -451,15 +574,20 @@ class RdfExplorer {
             labels
                 .attr('x', d => d.x)
                 .attr('y', d => d.y);
-
+    
             this.updateMiniMap(visibleNodes, visibleLinks);
         });
     
         const overlay = document.querySelector('.graph-overlay');
         overlay.innerHTML = `📊 Graphe: ${visibleNodes.length} nœuds • ${visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
-    }        
+        
+        const nbVisible = this.visibleNodes.length;
+        this.updateDepthSlider(nbVisible - 1);
+
+    }            
 
     selectNode(node) {
+        this.selectedNode = node;
         const nodeInfo = document.querySelector('.toolbar .panel:first-child .panel-content');
         nodeInfo.innerHTML = `
             <strong>${node.label}</strong><br>
@@ -475,7 +603,9 @@ class RdfExplorer {
                 </div>
             </div>
         `;
+        this.updateSelectedNodeHighlight();
     }
+    
 
     updateStatistics() {
         const stats = {
@@ -550,13 +680,13 @@ class RdfExplorer {
         URL.revokeObjectURL(url);
     }
 
-    resetGraph() {
+    deleteGraph() {
         this.graph = {
             nodes: [],
             links: [],
             triples: []
         };
-        this.activePredicates = new Set(); // reset predicate filters
+        this.activePredicates = new Set(); // delete predicate filters
 
         if (this.svg) {
             this.svg.selectAll('*').remove();
@@ -693,7 +823,392 @@ class RdfExplorer {
             .attr("stroke-width", 1)
             .attr("stroke-dasharray", "4 2");
     }
+
+    exportVisibleRDFandConfig() {
+        const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
+        const visibleTriples = this.graph.triples.filter(t =>
+            visibleNodeIds.has(t.subject) && visibleNodeIds.has(t.object)
+        );
+    
+        let ttlContent = '';
+        visibleTriples.forEach(t => {
+            const subject = `<${t.subject}>`;
+            const predicate = `<${t.predicate}>`;
+            const object = t.objectType === 'Literal'
+                ? `"${t.object}"`
+                : `<${t.object}>`;
+            ttlContent += `${subject} ${predicate} ${object} .\n`;
+        });
+    
+        const config = {
+            activePredicates: Array.from(this.activePredicates),
+            activeTypes: Array.from(this.activeTypes),
+            hideIsolatedNodes: this.hideIsolatedNodes,
+            minDegreeFilter: this.minDegreeFilter,
+            nodeColorMode: this.nodeColorMode,
+            nodeSizeMode: this.nodeSizeMode,
+            showEdgeLabels: this.showEdgeLabels
+        };
         
+        const configContent = JSON.stringify(config, null, 2);
+    
+        const download = (filename, content, mimeType) => {
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+    
+        download("export.ttl", ttlContent, "text/turtle");
+        download("config.json", configContent, "application/json");
+    }    
+
+    async loadConfigFile(file) {
+        try {
+            const content = await file.text();
+            const config = JSON.parse(content);
+    
+            // Restaurer les options
+            this.activePredicates = new Set(config.activePredicates || []);
+            this.activeTypes = new Set(config.activeTypes || []);
+            this.hideIsolatedNodes = !!config.hideIsolatedNodes;
+            this.minDegreeFilter = config.minDegreeFilter ?? 0;
+            this.nodeColorMode = config.nodeColorMode || 'type';
+            this.nodeSizeMode = config.nodeSizeMode || 'total';
+            this.showEdgeLabels = !!config.showEdgeLabels;
+    
+            // Appliquer les réglages UI
+            document.getElementById('showEdgeLabels').checked = this.showEdgeLabels;
+            document.getElementById('hideIsolatedNodes').checked = this.hideIsolatedNodes;
+    
+            const rangeInput = document.querySelector('.range-input');
+            rangeInput.value = this.minDegreeFilter;
+            document.getElementById('minDegreeValue').textContent = this.minDegreeFilter;
+    
+            document.getElementById('nodeColorModeSelect').value = {
+                'type': 'Par type RDF',
+                'in': 'Par degré entrant',
+                'out': 'Par degré sortant',
+                'total': 'Par degré total'
+            }[this.nodeColorMode];
+    
+            document.querySelectorAll('.form-group select')[1].value = {
+                'in': 'Par degré entrant',
+                'out': 'Par degré sortant',
+                'total': 'Par degré total'
+            }[this.nodeSizeMode];
+    
+            // Re-render après application config
+            this.renderGraph();
+        } catch (e) {
+            console.error('Erreur lors du chargement de la configuration:', e);
+            alert('Erreur lors du chargement du fichier de configuration.');
+        }
+    }
+
+    updateDepthSlider(maxDepth) {
+        const rangeInput = document.getElementById('depthRange');
+        const labels = document.getElementById('depthRangeLabels').children;
+    
+        const min = 1;
+        const max = Math.max(1, maxDepth);  // min 1, max au moins 1
+        const median = Math.floor((min + max) / 2);
+    
+        rangeInput.min = min;
+        rangeInput.max = max;
+        rangeInput.value = min;
+    
+        labels[0].textContent = min;
+        labels[1].textContent = median;
+        labels[2].textContent = max;
+
+        document.getElementById('depthValue').textContent = min;
+
+    }    
+
+    showAutocomplete(inputElement, type) {
+        const input = inputElement.value.trim().toLowerCase();
+        const container = inputElement.parentElement;
+    
+        const old = container.querySelector('.autocomplete');
+        if (old) old.remove();
+    
+        if (!input) return;
+    
+        const matches = this.graph.nodes
+            .filter(n => n.label.toLowerCase().startsWith(input))
+            .slice(0, 10);
+    
+        if (matches.length === 0) return;
+    
+        const list = document.createElement('div');
+        list.className = 'autocomplete';
+        Object.assign(list.style, {
+            border: '1px solid #ccc',
+            background: 'white',
+            position: 'absolute',
+            zIndex: 1000,
+            width: '100%'
+        });
+    
+        matches.forEach(n => {
+            const item = document.createElement('div');
+            item.textContent = n.label;
+            Object.assign(item.style, {
+                padding: '5px',
+                cursor: 'pointer'
+            });
+            item.addEventListener('click', () => {
+                inputElement.value = n.label;
+                this.selectNodeFromInput(n.label, type);
+                list.remove();
+            });
+            list.appendChild(item);
+        });
+    
+        container.style.position = 'relative';
+        container.appendChild(list);
+    
+        document.addEventListener('click', (e) => {
+            if (!container.contains(e.target)) {
+                const old = container.querySelector('.autocomplete');
+                if (old) old.remove();
+            }
+        }, { once: true });
+    }
+    
+    
+    selectNodeFromInput(label, type = 'start') {
+        const node = this.graph.nodes.find(n => n.label === label);
+        if (node) {
+            if (type === 'start') {
+                this.setStartNode(node);
+            } else {
+                this.setEndNode(node);
+            }
+        } else {
+            alert('Nœud introuvable');
+        }
+    }
+    
+    
+    setStartNode(node) {
+        this.startNode = node;
+        this.startNodeInput.value = node.label;
+        this.updateNodeStyles();
+    }
+
+    setEndNode(node) {
+        this.endNode = node;
+        this.endNodeInput.value = node.label;
+        this.updateNodeStyles();
+    }    
+    
+    updateNodeStyles() {
+        this.svg.selectAll('.nodes circle')
+            .attr('stroke', d => {
+                if (d === this.startNode) return 'green';
+                if (d === this.endNode) return 'red';
+                return 'white';
+            })
+            .attr('stroke-width', d => {
+                if (d === this.startNode || d === this.endNode) return 4;
+                return 2;
+            });
+    }
+    
+    updateSelectedNodeHighlight() {
+        this.svg.selectAll('.nodes circle')
+            .attr('stroke', d => {
+                if (d === this.startNode) return 'green';
+                if (d === this.endNode) return 'red';
+                if (d === this.selectedNode) return 'orange';
+                return 'white';
+            })
+            .attr('stroke-width', d => {
+                if (d === this.startNode || d === this.endNode || d === this.selectedNode) return 4;
+                return 2;
+            });
+    }    
+
+    async exploreFromStartNode(maxDepth = 3, delay = 1000) {
+        if (!this.startNode) {
+            alert("Veuillez sélectionner un nœud de départ.");
+            return;
+        }
+    
+        const direction = this.exploreDirectionSelect.value; // récupère la direction sélectionnée
+        const visited = new Set();
+        const layers = [];
+        const queue = [{ node: this.startNode, depth: 0 }];
+        visited.add(this.startNode.id);
+    
+        while (queue.length > 0) {
+            const { node, depth } = queue.shift();
+            if (!layers[depth]) layers[depth] = [];
+            layers[depth].push(node);
+    
+            if (depth < maxDepth) {
+                const neighbors = this.graph.links.flatMap(link => {
+                    let neighbors = [];
+    
+                    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+                    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+    
+                    const sourceNode = typeof link.source === 'object' ? link.source : this.graph.nodes.find(n => n.id === link.source);
+                    const targetNode = typeof link.target === 'object' ? link.target : this.graph.nodes.find(n => n.id === link.target);
+    
+                    if (direction === 'Entrantes' || direction === 'Entrantes + Sortantes') {
+                        if (targetId === node.id && !visited.has(sourceId)) {
+                            neighbors.push(sourceNode);
+                        }
+                    }
+    
+                    if (direction === 'Sortantes' || direction === 'Entrantes + Sortantes') {
+                        if (sourceId === node.id && !visited.has(targetId)) {
+                            neighbors.push(targetNode);
+                        }
+                    }
+    
+                    return neighbors;
+                });
+    
+                neighbors.forEach(n => {
+                    if (!visited.has(n.id)) {
+                        visited.add(n.id);
+                        queue.push({ node: n, depth: depth + 1 });
+                    }
+                });
+            }
+        }
+    
+        for (let d = 0; d < layers.length; d++) {
+            const layer = layers[d];
+            this.highlightLayer(layer);
+            await new Promise(resolve => setTimeout(resolve, delay));
+        }
+    }    
+
+    highlightLayer(nodes) {
+        this.svg.selectAll('.nodes circle')
+            .filter(d => nodes.includes(d))
+            .transition()
+            .duration(300)
+            .attr('stroke', '#FFD700') // Jaune pétant
+            .attr('stroke-width', 6);
+    }
+
+    resetGraphView() {
+        // Réinitialise les nœuds de départ et d'arrivée
+        this.startNode = null;
+        this.endNode = null;
+        this.startNodeInput.value = '';
+        this.endNodeInput.value = '';
+    
+        // Supprime tous les styles de surlignage (y compris chemins et explorations)
+        this.svg.selectAll('.nodes circle')
+            .attr('stroke', d => {
+                if (d === this.selectedNode) return 'orange'; // si un nœud est sélectionné
+                return 'white';
+            })
+            .attr('stroke-width', d => {
+                if (d === this.selectedNode) return 4;
+                return 2;
+            });
+    
+        this.svg.selectAll('.zoom-group .links line')
+            .attr('stroke', '#9ca3af')
+            .attr('stroke-width', 2);
+    
+        // Reforcer le style du nœud sélectionné uniquement
+        this.updateSelectedNodeHighlight();
+    }
+    
+
+    findShortestPath() {
+        if (!this.startNode || !this.endNode) {
+            alert("Veuillez sélectionner à la fois un nœud de départ et d'arrivée.");
+            return;
+        }
+
+        const graph = new Map();
+        const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
+
+        // Construire un graphe orienté uniquement avec les liens visibles
+        for (const link of this.visibleLinks) {
+            const src = typeof link.source === 'object' ? link.source.id : link.source;
+            const tgt = typeof link.target === 'object' ? link.target.id : link.target;
+
+            //Graphe orienté
+            if (!graph.has(src)) graph.set(src, []);
+            graph.get(src).push(tgt);
+
+            // 👉 Si vous voulez un graphe NON orienté, ajoutez cette ligne :
+            if (!graph.has(tgt)) graph.set(tgt, []);
+            graph.get(tgt).push(src);
+        }
+
+        // BFS sur les nœuds visibles uniquement
+        const queue = [[this.startNode.id]];
+        const visited = new Set();
+
+        while (queue.length > 0) {
+            const path = queue.shift();
+            const node = path[path.length - 1];
+
+            if (node === this.endNode.id) {
+                this.highlightPath(path);
+                return;
+            }
+
+            if (!visited.has(node)) {
+                visited.add(node);
+                const neighbors = (graph.get(node) || []).filter(n => visibleNodeIds.has(n));
+                for (const neighbor of neighbors) {
+                    queue.push([...path, neighbor]);
+                }
+            }
+        }
+
+        alert("Aucun chemin visible trouvé entre les deux nœuds.");
+    }
+
+    highlightPath(path) {
+        // Affiche les nœuds du chemin en bleu foncé
+        this.svg.selectAll('.nodes circle')
+            .attr('stroke', d => {
+                if (path.includes(d.id)) return '#003366'; // couleur spéciale
+                if (d === this.startNode) return 'green';
+                if (d === this.endNode) return 'red';
+                return 'white';
+            })
+            .attr('stroke-width', d => path.includes(d.id) ? 6 : 2);
+    
+        // Affiche les liens du chemin en épais
+        const pathLinks = new Set();
+        for (let i = 0; i < path.length - 1; i++) {
+            const pair = [path[i], path[i + 1]];
+            pathLinks.add(pair.join('->'));
+        }
+    
+        this.svg.selectAll('.zoom-group .links line')
+            .attr('stroke', d => {
+                const src = typeof d.source === 'object' ? d.source.id : d.source;
+                const tgt = typeof d.target === 'object' ? d.target.id : d.target;
+                return pathLinks.has(`${src}->${tgt}`) || pathLinks.has(`${tgt}->${src}`) ? '#003366' : '#9ca3af';
+            })
+            .attr('stroke-width', d => {
+                const src = typeof d.source === 'object' ? d.source.id : d.source;
+                const tgt = typeof d.target === 'object' ? d.target.id : d.target;
+                return pathLinks.has(`${src}->${tgt}`) || pathLinks.has(`${tgt}->${src}`) ? 4 : 2;
+            });
+    }    
+
 }
 
 //Demarrage app
