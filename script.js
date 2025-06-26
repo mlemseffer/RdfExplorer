@@ -12,8 +12,8 @@ class RdfExplorer {
         this.hideIsolatedNodes = false;
         this.showEdgeLabels = false;
         this.minDegreeFilter = 0;
-        this.nodeSizeMode = 'in'; // 'in', 'out', 'total'
-        this.nodeColorMode = 'type'; // 'type' or 'degree'
+        this.nodeSizeMode = 'in'; 
+        this.nodeColorMode = 'type'; 
         this.visibleNodes = [];
         this.visibleLinks = [];
 
