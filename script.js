@@ -125,37 +125,29 @@ class RdfExplorer {
             if (e.key === 'Enter') this.selectNodeFromInput(this.startNodeInput.value);
         });
 
-        // Bouton "Sélectionner départ"
-        document.querySelectorAll('button.btn.btn-secondary').forEach(btn => {
-            if (btn.textContent.includes('Sélectionner départ')) {
-                btn.addEventListener('click', () => {
-                    const value = this.startNodeInput.value.trim();
-                    if (value === '' && this.selectedNode) {
-                        this.setStartNode(this.selectedNode);
-                    } else {
-                        this.selectNodeFromInput(value);
-                    }
-                });
+        document.getElementById('startNodeBtn').addEventListener('click', () => {
+            const value = this.startNodeInput.value.trim();
+            if (value === '' && this.selectedNode) {
+                this.setStartNode(this.selectedNode);
+            } else {
+                this.selectNodeFromInput(value);
             }
-        });        
+        });
+            
 
         this.endNodeInput.addEventListener('input', () => this.showAutocomplete(this.endNodeInput, 'end'));
         this.endNodeInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') this.selectNodeFromInput(this.endNodeInput.value, 'end');
         });
 
-        document.querySelectorAll('button.btn.btn-secondary').forEach(btn => {
-            if (btn.textContent.includes('Sélectionner arrivée')) {
-                btn.addEventListener('click', () => {
-                    const value = this.endNodeInput.value.trim();
-                    if (value === '' && this.selectedNode) {
-                        this.setEndNode(this.selectedNode);
-                    } else {
-                        this.selectNodeFromInput(value, 'end');
-                    }
-                });
+        document.getElementById('endNodeBtn').addEventListener('click', () => {
+            const value = this.endNodeInput.value.trim();
+            if (value === '' && this.selectedNode) {
+                this.setEndNode(this.selectedNode);
+            } else {
+                this.selectNodeFromInput(value, 'end');
             }
-        });        
+        });       
         
         this.exploreDirectionSelect = document.getElementById('edgeDirectionSelect');
         document.getElementById('depthExploreBtn').addEventListener('click', () => {
