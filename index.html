@@ -14,11 +14,11 @@
         <header class="header">
             <h1>🕸️ RdfExplorer</h1>
             <div class="header-actions">
-                <button class="btn btn-primary">📁 Importer Configuration (JSON)</button>
+                <button class="btn btn-primary" id="importConfigBtn">📁 Importer Configuration (JSON)</button>
+                <input type="file" id="configInput" accept=".json" style="display: none;">
                 <button class="btn btn-primary" id="importRDFBtn">📁 Importer RDF</button>
                 <input type="file" id="fileInput" accept=".ttl" style="display: none;">
-                <button class="btn btn-primary">💾 Sauvegarder</button>
-                <button class="btn btn-primary">📤 Exporter (RDF+Config)</button>
+                <button class="btn btn-primary" id="exportRDFConfigBtn">📤 Exporter (RDF+Config)</button>
                 <button class="btn btn-primary" id="exportSVGBtn">📤 Exporter SVG</button>
             </div>
         </header>
@@ -99,32 +99,42 @@
                         <input type="text" class="form-control" placeholder="ex: dbr:Paris">
                     </div>
 
-                    <button class="btn btn-secondary">🔰​ Sélectionner départ</button>
+                    <button class="btn btn-secondary" id="startNodeBtn">🔰 Sélectionner départ</button>
 
                     <div class="form-group">
-                        <label>Profondeur</label>
-                        <input type="range" class="range-input">
-                        <div class="range-labels">
+                        <label>Profondeur Max : <span id="depthValue">1</span></label>
+                        <input type="range" class="range-input" id="depthRange">
+                        <div class="range-labels" id="depthRangeLabels">
                             <span>1</span>
                             <span>TODO</span>
                             <span>TODO</span>
                         </div>
                     </div>
                     
-                    <button class="btn btn-secondary">🎯 Explorer en profondeur</button>
+                    <div class="form-group">
+                        <label>Exploration par arêtes</label>
+                        <select class="form-control" id="edgeDirectionSelect">
+                            <option>Entrantes + Sortantes</option>
+                            <option>Entrantes</option>
+                            <option>Sortantes</option>
+                        </select>                        
+                    </div>
+
+                    <button class="btn btn-secondary" id="depthExploreBtn">🎯 Explorer en profondeur</button>
 
                     <div class="form-group" style="margin-top: 15px;">
                         <label>Recherche de chemin</label>
                         <input type="text" class="form-control" placeholder="Nœud d'arrivée"
                             style="margin-bottom: 5px;">
-                        <button class="btn btn-secondary">🛑​ Sélectionner arrivée</button>
-                        <button class="btn btn-secondary">⚡ Chemin le plus court</button>
+                            <button class="btn btn-secondary" id="endNodeBtn">🛑 Sélectionner arrivée</button>
+                        <button class="btn btn-secondary" id="shortestPathBtn">⚡ Chemin le plus court</button>
                         <button class="btn btn-secondary">🗺️ Tous les chemins</button>
                     </div>
 
                     <div class="form-group" style="margin-top: 15px;">
                         <label>Reinitialisation</label>
-                        <button id="resetGraphBtn" class="btn btn-secondary">🔄 Supprimer le graphe</button>
+                        <button id="resetGraphBtn" class="btn btn-secondary">🔄 Nettoyer le graphe</button>
+                        <button id="deleteGraphBtn" class="btn btn-secondary">🔄 Supprimer le graphe</button>
                     </div>
                 </div>
             </div>
@@ -188,6 +198,20 @@
                             <span>skos:Concept</span>
                             <span class="stats-value">TODO</span>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="panel">
+                <div class="panel-header">➡️​ Label des arêtes</div> 
+                <div class="panel-content">
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="showEdgeLabels">
+                            <label for="showEdgeLabels">Afficher le nom des arêtes</label>
+                        </div>
+
                     </div>
                 </div>
             </div>
