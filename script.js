@@ -23,6 +23,10 @@ class RdfExplorer {
         this.endNodeInput = document.querySelector('.form-group input.form-control[placeholder="Nœud d\'arrivée"]');
         this.endNode = null;
 
+        this.allPaths = [];
+        this.currentPathIndex = 0;
+
+
         this.init();
     }
 
@@ -157,6 +161,24 @@ class RdfExplorer {
         
         document.getElementById('shortestPathBtn').addEventListener('click', () => {
             this.findShortestPath();
+        });        
+
+        document.getElementById('allPathsBtn').addEventListener('click', () => {
+            this.findAllPaths();
+        });       
+        
+        document.getElementById('prevPathBtn').addEventListener('click', () => {
+            if (this.allPaths.length < 2) return;
+            this.currentPathIndex = (this.currentPathIndex - 1 + this.allPaths.length) % this.allPaths.length;
+            this.highlightPath(this.allPaths[this.currentPathIndex]);
+            document.getElementById('pathCounter').textContent = `${this.currentPathIndex + 1} / ${this.allPaths.length}`;
+        });
+        
+        document.getElementById('nextPathBtn').addEventListener('click', () => {
+            if (this.allPaths.length < 2) return;
+            this.currentPathIndex = (this.currentPathIndex + 1) % this.allPaths.length;
+            this.highlightPath(this.allPaths[this.currentPathIndex]);
+            document.getElementById('pathCounter').textContent = `${this.currentPathIndex + 1} / ${this.allPaths.length}`;
         });        
 
     }
@@ -369,7 +391,7 @@ class RdfExplorer {
             .attr('height', '100%')
             .call(
                 d3.zoom()
-                    .scaleExtent([0.1, 5])
+                    .scaleExtent([0.05, 5])
                     .on('zoom', (event) => {
                         this.svg.select('g.zoom-group').attr('transform', event.transform);
                         this.updateZoomLabel(event.transform.k);
@@ -678,22 +700,32 @@ class RdfExplorer {
             links: [],
             triples: []
         };
-        this.activePredicates = new Set(); // delete predicate filters
-
+        this.activePredicates = new Set();
+    
+        // Supprime l'affichage SVG
         if (this.svg) {
             this.svg.selectAll('*').remove();
             this.svg.append('g').attr('class', 'zoom-group');
             this.svg.select('.zoom-group').append('g').attr('class', 'links');
             this.svg.select('.zoom-group').append('g').attr('class', 'nodes');
         }
-
+    
         this.updateStatistics();
         document.getElementById('fileInput').value = '';
-
+    
+        // Réinitialise les états de chemin et navigation
+        this.allPaths = [];
+        this.currentPathIndex = 0;
+        this.startNode = null;
+        this.endNode = null;
+        this.startNodeInput.value = '';
+        this.endNodeInput.value = '';
+        document.getElementById('pathNavigationControls').style.display = 'none';
+    
         const overlay = document.querySelector('.graph-overlay');
         overlay.innerHTML = `📊 Graphe: 0 nœuds • 0 arêtes • <span id="zoom">Zoom : 100%</span>`;
-
     }
+    
 
     dragstarted(event, d) {
         if (!event.active) this.simulation.alphaTarget(0.3).restart();
@@ -1117,9 +1149,15 @@ class RdfExplorer {
             .attr('stroke', '#9ca3af')
             .attr('stroke-width', 2);
     
-        // Reforcer le style du nœud sélectionné uniquement
+        // Réinitialise les chemins trouvés et masque les boutons
+        this.allPaths = [];
+        this.currentPathIndex = 0;
+        document.getElementById('pathNavigationControls').style.display = 'none';
+    
+        // Renforce le style du nœud sélectionné uniquement
         this.updateSelectedNodeHighlight();
     }
+    
     
 
     findShortestPath() {
@@ -1201,6 +1239,69 @@ class RdfExplorer {
             });
     }    
 
+    findAllPaths() {
+        if (!this.startNode || !this.endNode) {
+            alert("Veuillez sélectionner à la fois un nœud de départ et d'arrivée.");
+            return;
+        }
+    
+        const graph = new Map();
+        const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
+    
+        for (const link of this.visibleLinks) {
+            const src = typeof link.source === 'object' ? link.source.id : link.source;
+            const tgt = typeof link.target === 'object' ? link.target.id : link.target;
+    
+            if (!graph.has(src)) graph.set(src, []);
+            graph.get(src).push(tgt);
+    
+            if (!graph.has(tgt)) graph.set(tgt, []);
+            graph.get(tgt).push(src);
+        }
+    
+        const paths = [];
+        const visited = new Set();
+    
+        const dfs = (current, target, path) => {
+            if (path.length > 20) return; // Limite de profondeur pour éviter les boucles
+            if (current === target) {
+                paths.push([...path]);
+                return;
+            }
+    
+            visited.add(current);
+    
+            for (const neighbor of graph.get(current) || []) {
+                if (!visited.has(neighbor)) {
+                    path.push(neighbor);
+                    dfs(neighbor, target, path);
+                    path.pop();
+                }
+            }
+    
+            visited.delete(current);
+        };
+    
+        dfs(this.startNode.id, this.endNode.id, [this.startNode.id]);
+    
+        if (paths.length === 0) {
+            alert("Aucun chemin trouvé.");
+            document.getElementById('pathNavigationControls').style.display = 'none';
+            return;
+        }
+    
+        this.allPaths = paths;
+        this.currentPathIndex = 0;
+        this.highlightPath(paths[0]);
+    
+        if (paths.length >= 2) {
+            document.getElementById('pathNavigationControls').style.display = 'block';
+            document.getElementById('pathCounter').textContent = `1 / ${paths.length}`;
+        } else {
+            document.getElementById('pathNavigationControls').style.display = 'none';
+        }
+    }
+    
 }
 
 //Demarrage app
