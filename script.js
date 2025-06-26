@@ -11,9 +11,10 @@ class RdfExplorer {
         this.activeTypes = new Set();
         this.hideIsolatedNodes = false;
         this.showEdgeLabels = false;
+        this.showNodeLabels = false;
         this.minDegreeFilter = 0;
-        this.nodeSizeMode = 'in'; 
-        this.nodeColorMode = 'type'; 
+        this.nodeSizeMode = 'in';
+        this.nodeColorMode = 'type';
         this.visibleNodes = [];
         this.visibleLinks = [];
 
@@ -42,12 +43,12 @@ class RdfExplorer {
 
         document.getElementById('exportRDFConfigBtn').addEventListener('click', () => {
             this.exportVisibleRDFandConfig();
-        });        
+        });
 
         document.getElementById('importConfigBtn').addEventListener('click', () => {
             document.getElementById('configInput').click();
         });
-        
+
         document.getElementById('configInput').addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file && file.name.endsWith('.json')) {
@@ -55,7 +56,7 @@ class RdfExplorer {
             } else {
                 alert('Veuillez sélectionner un fichier .json');
             }
-        });        
+        });
 
         document.getElementById('fileInput').addEventListener('change', (event) => {
             const file = event.target.files[0];
@@ -73,7 +74,7 @@ class RdfExplorer {
         document.getElementById('resetGraphBtn').addEventListener('click', () => {
             this.resetGraphView();
         });
-        
+
 
         document.getElementById('exportSVGBtn').addEventListener('click', () => {
             this.exportSVG();
@@ -82,7 +83,12 @@ class RdfExplorer {
         document.getElementById('showEdgeLabels').addEventListener('change', (e) => {
             this.showEdgeLabels = e.target.checked;
             this.renderGraph();
-        });        
+        });
+
+        document.getElementById('showNodeLabels').addEventListener('change', (e) => {
+            this.showNodeLabels = e.target.checked;
+            this.renderGraph();
+        });
 
         document.getElementById('hideIsolatedNodes').addEventListener('change', (e) => {
             this.hideIsolatedNodes = e.target.checked;
@@ -96,7 +102,7 @@ class RdfExplorer {
             this.renderGraph();
         });
 
-        const sizeSelect = document.querySelectorAll('.form-group select')[1]; // 2e select
+        const sizeSelect = document.getElementById('nodeSizeModeSelect');
         sizeSelect.addEventListener('change', (e) => {
             const value = e.target.value;
             if (value.includes('entrant')) this.nodeSizeMode = 'in';
@@ -137,7 +143,7 @@ class RdfExplorer {
                 this.selectNodeFromInput(value);
             }
         });
-            
+
 
         this.endNodeInput.addEventListener('input', () => this.showAutocomplete(this.endNodeInput, 'end'));
         this.endNodeInput.addEventListener('keydown', (e) => {
@@ -151,35 +157,35 @@ class RdfExplorer {
             } else {
                 this.selectNodeFromInput(value, 'end');
             }
-        });       
-        
+        });
+
         this.exploreDirectionSelect = document.getElementById('edgeDirectionSelect');
         document.getElementById('depthExploreBtn').addEventListener('click', () => {
             const maxDepth = parseInt(document.getElementById('depthRange').value);
             this.exploreFromStartNode(maxDepth, 1000); // 1 seconde
-        });     
-        
+        });
+
         document.getElementById('shortestPathBtn').addEventListener('click', () => {
             this.findShortestPath();
-        });        
+        });
 
         document.getElementById('allPathsBtn').addEventListener('click', () => {
             this.findAllPaths();
-        });       
-        
+        });
+
         document.getElementById('prevPathBtn').addEventListener('click', () => {
             if (this.allPaths.length < 2) return;
             this.currentPathIndex = (this.currentPathIndex - 1 + this.allPaths.length) % this.allPaths.length;
             this.highlightPath(this.allPaths[this.currentPathIndex]);
             document.getElementById('pathCounter').textContent = `${this.currentPathIndex + 1} / ${this.allPaths.length}`;
         });
-        
+
         document.getElementById('nextPathBtn').addEventListener('click', () => {
             if (this.allPaths.length < 2) return;
             this.currentPathIndex = (this.currentPathIndex + 1) % this.allPaths.length;
             this.highlightPath(this.allPaths[this.currentPathIndex]);
             document.getElementById('pathCounter').textContent = `${this.currentPathIndex + 1} / ${this.allPaths.length}`;
-        });        
+        });
 
     }
 
@@ -338,13 +344,13 @@ class RdfExplorer {
     extractActiveTypes() {
         const typeSet = new Set(this.graph.nodes.map(n => n.type));
         const container = document.querySelector('.sidebar .panel .checkbox-group');
-    
+
         container.innerHTML = ''; // Réinitialiser
-    
+
         typeSet.forEach(type => {
             const id = `type-${type.replace(/[^a-zA-Z0-9]/g, '')}`;
             this.activeTypes.add(type);
-    
+
             const div = document.createElement('div');
             div.classList.add('checkbox-item');
             div.innerHTML = `
@@ -352,7 +358,7 @@ class RdfExplorer {
                 <label for="${id}">${type}</label>
             `;
             container.appendChild(div);
-    
+
             div.querySelector('input').addEventListener('change', (e) => {
                 if (e.target.checked) {
                     this.activeTypes.add(type);
@@ -419,7 +425,7 @@ class RdfExplorer {
         const width = this.svg.node().getBoundingClientRect().width;
         const height = this.svg.node().getBoundingClientRect().height;
     
-        // Définir la palette de couleurs selon le mode sélectionné
+        // Définir la palette de couleurs
         let colorScale;
         if (this.nodeColorMode === 'type') {
             const types = Array.from(new Set(this.graph.nodes.map(n => n.type))).sort();
@@ -441,7 +447,6 @@ class RdfExplorer {
             this.updateColorLegend(null);
         }
     
-        // Taille des nœuds
         const sizeAccessor = d => {
             if (this.nodeSizeMode === 'in') return d.inDegree;
             if (this.nodeSizeMode === 'out') return d.outDegree;
@@ -470,7 +475,6 @@ class RdfExplorer {
         });
     
         const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-    
         const visibleLinks = predicateFilteredLinks.filter(l =>
             visibleNodeIds.has(typeof l.source === 'object' ? l.source.id : l.source) &&
             visibleNodeIds.has(typeof l.target === 'object' ? l.target.id : l.target)
@@ -478,19 +482,15 @@ class RdfExplorer {
     
         this.visibleNodes = visibleNodes;
         this.visibleLinks = visibleLinks;
-
-        // Vérifie si le noeud de départ est toujours visible, sinon le réinitialiser
+    
         if (this.startNode && !visibleNodeIds.has(this.startNode.id)) {
             this.startNode = null;
             this.startNodeInput.value = '';
         }
-
-        // Vérifie si le noeud d’arrivée est toujours visible, sinon le réinitialiser
         if (this.endNode && !visibleNodeIds.has(this.endNode.id)) {
             this.endNode = null;
             this.endNodeInput.value = '';
-}
-
+        }
     
         this.simulation = d3.forceSimulation(visibleNodes)
             .force('link', d3.forceLink(visibleLinks).id(d => d.id).distance(100))
@@ -540,8 +540,6 @@ class RdfExplorer {
                 .on('start', (event, d) => this.dragstarted(event, d))
                 .on('drag', (event, d) => this.dragged(event, d))
                 .on('end', (event, d) => this.dragended(event, d)))
-
-            
             .attr('stroke', d => {
                 if (d === this.startNode) return 'green';
                 if (d === this.endNode) return 'red';
@@ -550,21 +548,25 @@ class RdfExplorer {
             .attr('stroke-width', d => {
                 if (d === this.startNode || d === this.endNode) return 4;
                 return 2;
-            })
-                
-                
+            });
     
-        const labels = this.svg.select('.zoom-group .nodes')
-            .selectAll('text')
-            .data(visibleNodes)
-            .enter().append('text')
-            .text(d => d.label)
-            .attr('font-size', '12px')
-            .attr('text-anchor', 'middle')
-            .attr('dy', '.35em')
-            .style('pointer-events', 'none')
-            .style('fill', 'white')
-            .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.7)');
+        // ✅ NOUVEAU : Affichage conditionnel des labels de noeuds
+        const labelsGroup = this.svg.select('.zoom-group .nodes');
+        labelsGroup.selectAll('text').remove();
+    
+        if (this.showNodeLabels) {
+            labelsGroup
+                .selectAll('text')
+                .data(visibleNodes)
+                .enter().append('text')
+                .text(d => d.label)
+                .attr('font-size', '12px')
+                .attr('text-anchor', 'middle')
+                .attr('dy', '.35em')
+                .style('pointer-events', 'none')
+                .style('fill', 'white')
+                .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.7)');
+        }
     
         node.on('click', (event, d) => this.selectNode(d));
     
@@ -585,9 +587,11 @@ class RdfExplorer {
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
     
-            labels
-                .attr('x', d => d.x)
-                .attr('y', d => d.y);
+            if (this.showNodeLabels) {
+                this.svg.selectAll('.zoom-group .nodes text')
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y);
+            }
     
             this.updateMiniMap(visibleNodes, visibleLinks);
         });
@@ -595,10 +599,8 @@ class RdfExplorer {
         const overlay = document.querySelector('.graph-overlay');
         overlay.innerHTML = `📊 Graphe: ${visibleNodes.length} nœuds • ${visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
         
-        const nbVisible = this.visibleNodes.length;
-        this.updateDepthSlider(nbVisible - 1);
-
-    }            
+        this.updateDepthSlider(this.visibleNodes.length - 1);
+    }    
 
     selectNode(node) {
         this.selectedNode = node;
@@ -619,7 +621,7 @@ class RdfExplorer {
         `;
         this.updateSelectedNodeHighlight();
     }
-    
+
 
     updateStatistics() {
         const stats = {
@@ -701,7 +703,7 @@ class RdfExplorer {
             triples: []
         };
         this.activePredicates = new Set();
-    
+
         // Supprime l'affichage SVG
         if (this.svg) {
             this.svg.selectAll('*').remove();
@@ -709,10 +711,10 @@ class RdfExplorer {
             this.svg.select('.zoom-group').append('g').attr('class', 'links');
             this.svg.select('.zoom-group').append('g').attr('class', 'nodes');
         }
-    
+
         this.updateStatistics();
         document.getElementById('fileInput').value = '';
-    
+
         // Réinitialise les états de chemin et navigation
         this.allPaths = [];
         this.currentPathIndex = 0;
@@ -721,11 +723,11 @@ class RdfExplorer {
         this.startNodeInput.value = '';
         this.endNodeInput.value = '';
         document.getElementById('pathNavigationControls').style.display = 'none';
-    
+
         const overlay = document.querySelector('.graph-overlay');
         overlay.innerHTML = `📊 Graphe: 0 nœuds • 0 arêtes • <span id="zoom">Zoom : 100%</span>`;
     }
-    
+
 
     dragstarted(event, d) {
         if (!event.active) this.simulation.alphaTarget(0.3).restart();
@@ -770,9 +772,9 @@ class RdfExplorer {
     updateColorLegend(colorScale) {
         const legendContainer = document.getElementById('colorLegend');
         legendContainer.innerHTML = '';
-    
+
         if (!colorScale) return; // ne rien afficher si mode degré
-    
+
         colorScale.domain().forEach(type => {
             const color = colorScale(type);
             const item = document.createElement('div');
@@ -788,20 +790,20 @@ class RdfExplorer {
     updateMiniMap(nodes, links) {
         const miniSvg = d3.select("#miniMapSvg");
         miniSvg.selectAll("*").remove();
-    
+
         const width = miniSvg.node().clientWidth;
         const height = miniSvg.node().clientHeight;
-    
+
         // Étendue des coordonnées réelles
         const xExtent = d3.extent(nodes, d => d.x);
         const yExtent = d3.extent(nodes, d => d.y);
-    
+
         // Échelles de la minimap
         const xScale = d3.scaleLinear().domain(xExtent).range([10, width - 10]);
         const yScale = d3.scaleLinear().domain(yExtent).range([10, height - 10]);
-    
+
         const group = miniSvg.append("g");
-    
+
         // Liens
         group.selectAll("line")
             .data(links)
@@ -813,7 +815,7 @@ class RdfExplorer {
             .attr("y2", d => yScale(d.target.y))
             .attr("stroke", "#ccc")
             .attr("stroke-width", 1);
-    
+
         // Nœuds
         group.selectAll("circle")
             .data(nodes)
@@ -823,19 +825,19 @@ class RdfExplorer {
             .attr("cy", d => yScale(d.y))
             .attr("r", 2)
             .attr("fill", "#555");
-    
+
         // Rectangle rouge (vue principale)
         const zoomTransform = d3.zoomTransform(this.svg.node());
-    
+
         // Taille de la zone visible dans le graphe principal (après zoom)
         const mainW = this.svg.node().clientWidth;
         const mainH = this.svg.node().clientHeight;
-    
+
         const visibleX1 = -zoomTransform.x / zoomTransform.k;
         const visibleY1 = -zoomTransform.y / zoomTransform.k;
         const visibleX2 = visibleX1 + mainW / zoomTransform.k;
         const visibleY2 = visibleY1 + mainH / zoomTransform.k;
-    
+
         // Tracer la vue projetée dans la minimap
         group.append("rect")
             .attr("x", xScale(visibleX1))
@@ -853,7 +855,7 @@ class RdfExplorer {
         const visibleTriples = this.graph.triples.filter(t =>
             visibleNodeIds.has(t.subject) && visibleNodeIds.has(t.object)
         );
-    
+
         let ttlContent = '';
         visibleTriples.forEach(t => {
             const subject = `<${t.subject}>`;
@@ -863,7 +865,7 @@ class RdfExplorer {
                 : `<${t.object}>`;
             ttlContent += `${subject} ${predicate} ${object} .\n`;
         });
-    
+
         const config = {
             activePredicates: Array.from(this.activePredicates),
             activeTypes: Array.from(this.activeTypes),
@@ -873,9 +875,9 @@ class RdfExplorer {
             nodeSizeMode: this.nodeSizeMode,
             showEdgeLabels: this.showEdgeLabels
         };
-        
+
         const configContent = JSON.stringify(config, null, 2);
-    
+
         const download = (filename, content, mimeType) => {
             const blob = new Blob([content], { type: mimeType });
             const url = URL.createObjectURL(blob);
@@ -887,16 +889,16 @@ class RdfExplorer {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         };
-    
+
         download("export.ttl", ttlContent, "text/turtle");
         download("config.json", configContent, "application/json");
-    }    
+    }
 
     async loadConfigFile(file) {
         try {
             const content = await file.text();
             const config = JSON.parse(content);
-    
+
             // Restaurer les options
             this.activePredicates = new Set(config.activePredicates || []);
             this.activeTypes = new Set(config.activeTypes || []);
@@ -905,28 +907,28 @@ class RdfExplorer {
             this.nodeColorMode = config.nodeColorMode || 'type';
             this.nodeSizeMode = config.nodeSizeMode || 'total';
             this.showEdgeLabels = !!config.showEdgeLabels;
-    
+
             // Appliquer les réglages UI
             document.getElementById('showEdgeLabels').checked = this.showEdgeLabels;
             document.getElementById('hideIsolatedNodes').checked = this.hideIsolatedNodes;
-    
+
             const rangeInput = document.querySelector('.range-input');
             rangeInput.value = this.minDegreeFilter;
             document.getElementById('minDegreeValue').textContent = this.minDegreeFilter;
-    
+
             document.getElementById('nodeColorModeSelect').value = {
                 'type': 'Par type RDF',
                 'in': 'Par degré entrant',
                 'out': 'Par degré sortant',
                 'total': 'Par degré total'
             }[this.nodeColorMode];
-    
+
             document.querySelectorAll('.form-group select')[1].value = {
                 'in': 'Par degré entrant',
                 'out': 'Par degré sortant',
                 'total': 'Par degré total'
             }[this.nodeSizeMode];
-    
+
             // Re-render après application config
             this.renderGraph();
         } catch (e) {
@@ -938,38 +940,38 @@ class RdfExplorer {
     updateDepthSlider(maxDepth) {
         const rangeInput = document.getElementById('depthRange');
         const labels = document.getElementById('depthRangeLabels').children;
-    
+
         const min = 1;
         const max = Math.max(1, maxDepth);  // min 1, max au moins 1
         const median = Math.floor((min + max) / 2);
-    
+
         rangeInput.min = min;
         rangeInput.max = max;
         rangeInput.value = min;
-    
+
         labels[0].textContent = min;
         labels[1].textContent = median;
         labels[2].textContent = max;
 
         document.getElementById('depthValue').textContent = min;
 
-    }    
+    }
 
     showAutocomplete(inputElement, type) {
         const input = inputElement.value.trim().toLowerCase();
         const container = inputElement.parentElement;
-    
+
         const old = container.querySelector('.autocomplete');
         if (old) old.remove();
-    
+
         if (!input) return;
-    
+
         const matches = this.graph.nodes
             .filter(n => n.label.toLowerCase().startsWith(input))
             .slice(0, 10);
-    
+
         if (matches.length === 0) return;
-    
+
         const list = document.createElement('div');
         list.className = 'autocomplete';
         Object.assign(list.style, {
@@ -979,7 +981,7 @@ class RdfExplorer {
             zIndex: 1000,
             width: '100%'
         });
-    
+
         matches.forEach(n => {
             const item = document.createElement('div');
             item.textContent = n.label;
@@ -994,10 +996,10 @@ class RdfExplorer {
             });
             list.appendChild(item);
         });
-    
+
         container.style.position = 'relative';
         container.appendChild(list);
-    
+
         document.addEventListener('click', (e) => {
             if (!container.contains(e.target)) {
                 const old = container.querySelector('.autocomplete');
@@ -1005,8 +1007,8 @@ class RdfExplorer {
             }
         }, { once: true });
     }
-    
-    
+
+
     selectNodeFromInput(label, type = 'start') {
         const node = this.graph.nodes.find(n => n.label === label);
         if (node) {
@@ -1019,8 +1021,8 @@ class RdfExplorer {
             alert('Nœud introuvable');
         }
     }
-    
-    
+
+
     setStartNode(node) {
         this.startNode = node;
         this.startNodeInput.value = node.label;
@@ -1031,8 +1033,8 @@ class RdfExplorer {
         this.endNode = node;
         this.endNodeInput.value = node.label;
         this.updateNodeStyles();
-    }    
-    
+    }
+
     updateNodeStyles() {
         this.svg.selectAll('.nodes circle')
             .attr('stroke', d => {
@@ -1045,7 +1047,7 @@ class RdfExplorer {
                 return 2;
             });
     }
-    
+
     updateSelectedNodeHighlight() {
         this.svg.selectAll('.nodes circle')
             .attr('stroke', d => {
@@ -1058,50 +1060,50 @@ class RdfExplorer {
                 if (d === this.startNode || d === this.endNode || d === this.selectedNode) return 4;
                 return 2;
             });
-    }    
+    }
 
     async exploreFromStartNode(maxDepth = 3, delay = 1000) {
         if (!this.startNode) {
             alert("Veuillez sélectionner un nœud de départ.");
             return;
         }
-    
+
         const direction = this.exploreDirectionSelect.value; // récupère la direction sélectionnée
         const visited = new Set();
         const layers = [];
         const queue = [{ node: this.startNode, depth: 0 }];
         visited.add(this.startNode.id);
-    
+
         while (queue.length > 0) {
             const { node, depth } = queue.shift();
             if (!layers[depth]) layers[depth] = [];
             layers[depth].push(node);
-    
+
             if (depth < maxDepth) {
                 const neighbors = this.graph.links.flatMap(link => {
                     let neighbors = [];
-    
+
                     const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
                     const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-    
+
                     const sourceNode = typeof link.source === 'object' ? link.source : this.graph.nodes.find(n => n.id === link.source);
                     const targetNode = typeof link.target === 'object' ? link.target : this.graph.nodes.find(n => n.id === link.target);
-    
+
                     if (direction === 'Entrantes' || direction === 'Entrantes + Sortantes') {
                         if (targetId === node.id && !visited.has(sourceId)) {
                             neighbors.push(sourceNode);
                         }
                     }
-    
+
                     if (direction === 'Sortantes' || direction === 'Entrantes + Sortantes') {
                         if (sourceId === node.id && !visited.has(targetId)) {
                             neighbors.push(targetNode);
                         }
                     }
-    
+
                     return neighbors;
                 });
-    
+
                 neighbors.forEach(n => {
                     if (!visited.has(n.id)) {
                         visited.add(n.id);
@@ -1110,13 +1112,13 @@ class RdfExplorer {
                 });
             }
         }
-    
+
         for (let d = 0; d < layers.length; d++) {
             const layer = layers[d];
             this.highlightLayer(layer);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
-    }    
+    }
 
     highlightLayer(nodes) {
         this.svg.selectAll('.nodes circle')
@@ -1133,7 +1135,7 @@ class RdfExplorer {
         this.endNode = null;
         this.startNodeInput.value = '';
         this.endNodeInput.value = '';
-    
+
         // Supprime tous les styles de surlignage (y compris chemins et explorations)
         this.svg.selectAll('.nodes circle')
             .attr('stroke', d => {
@@ -1144,21 +1146,19 @@ class RdfExplorer {
                 if (d === this.selectedNode) return 4;
                 return 2;
             });
-    
+
         this.svg.selectAll('.zoom-group .links line')
             .attr('stroke', '#9ca3af')
             .attr('stroke-width', 2);
-    
+
         // Réinitialise les chemins trouvés et masque les boutons
         this.allPaths = [];
         this.currentPathIndex = 0;
         document.getElementById('pathNavigationControls').style.display = 'none';
-    
+
         // Renforce le style du nœud sélectionné uniquement
         this.updateSelectedNodeHighlight();
     }
-    
-    
 
     findShortestPath() {
         if (!this.startNode || !this.endNode) {
@@ -1166,24 +1166,29 @@ class RdfExplorer {
             return;
         }
 
+        const direction = this.exploreDirectionSelect.value; // 👈 récupérer la direction
         const graph = new Map();
         const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
 
-        // Construire un graphe orienté uniquement avec les liens visibles
+        // Construire le graphe en fonction de la direction
         for (const link of this.visibleLinks) {
             const src = typeof link.source === 'object' ? link.source.id : link.source;
             const tgt = typeof link.target === 'object' ? link.target.id : link.target;
 
-            //Graphe orienté
-            if (!graph.has(src)) graph.set(src, []);
-            graph.get(src).push(tgt);
-
-            // 👉 Si vous voulez un graphe NON orienté, ajoutez cette ligne :
-            if (!graph.has(tgt)) graph.set(tgt, []);
-            graph.get(tgt).push(src);
+            if (direction === 'Entrantes + Sortantes') {
+                if (!graph.has(src)) graph.set(src, []);
+                graph.get(src).push(tgt);
+                if (!graph.has(tgt)) graph.set(tgt, []);
+                graph.get(tgt).push(src);
+            } else if (direction === 'Entrantes') {
+                if (!graph.has(tgt)) graph.set(tgt, []);
+                graph.get(tgt).push(src);
+            } else if (direction === 'Sortantes') {
+                if (!graph.has(src)) graph.set(src, []);
+                graph.get(src).push(tgt);
+            }
         }
 
-        // BFS sur les nœuds visibles uniquement
         const queue = [[this.startNode.id]];
         const visited = new Set();
 
@@ -1208,6 +1213,7 @@ class RdfExplorer {
         alert("Aucun chemin visible trouvé entre les deux nœuds.");
     }
 
+
     highlightPath(path) {
         // Affiche les nœuds du chemin en bleu foncé
         this.svg.selectAll('.nodes circle')
@@ -1218,14 +1224,14 @@ class RdfExplorer {
                 return 'white';
             })
             .attr('stroke-width', d => path.includes(d.id) ? 6 : 2);
-    
+
         // Affiche les liens du chemin en épais
         const pathLinks = new Set();
         for (let i = 0; i < path.length - 1; i++) {
             const pair = [path[i], path[i + 1]];
             pathLinks.add(pair.join('->'));
         }
-    
+
         this.svg.selectAll('.zoom-group .links line')
             .attr('stroke', d => {
                 const src = typeof d.source === 'object' ? d.source.id : d.source;
@@ -1237,40 +1243,48 @@ class RdfExplorer {
                 const tgt = typeof d.target === 'object' ? d.target.id : d.target;
                 return pathLinks.has(`${src}->${tgt}`) || pathLinks.has(`${tgt}->${src}`) ? 4 : 2;
             });
-    }    
+    }
 
     findAllPaths() {
         if (!this.startNode || !this.endNode) {
             alert("Veuillez sélectionner à la fois un nœud de départ et d'arrivée.");
             return;
         }
-    
+
+        const direction = this.exploreDirectionSelect.value; // 👈 récupérer la direction
         const graph = new Map();
         const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
-    
+
         for (const link of this.visibleLinks) {
             const src = typeof link.source === 'object' ? link.source.id : link.source;
             const tgt = typeof link.target === 'object' ? link.target.id : link.target;
-    
-            if (!graph.has(src)) graph.set(src, []);
-            graph.get(src).push(tgt);
-    
-            if (!graph.has(tgt)) graph.set(tgt, []);
-            graph.get(tgt).push(src);
+
+            if (direction === 'Entrantes + Sortantes') {
+                if (!graph.has(src)) graph.set(src, []);
+                graph.get(src).push(tgt);
+                if (!graph.has(tgt)) graph.set(tgt, []);
+                graph.get(tgt).push(src);
+            } else if (direction === 'Entrantes') {
+                if (!graph.has(tgt)) graph.set(tgt, []);
+                graph.get(tgt).push(src);
+            } else if (direction === 'Sortantes') {
+                if (!graph.has(src)) graph.set(src, []);
+                graph.get(src).push(tgt);
+            }
         }
-    
+
         const paths = [];
         const visited = new Set();
-    
+
         const dfs = (current, target, path) => {
-            if (path.length > 20) return; // Limite de profondeur pour éviter les boucles
+            if (path.length > 20) return; // Limite de profondeur
             if (current === target) {
                 paths.push([...path]);
                 return;
             }
-    
+
             visited.add(current);
-    
+
             for (const neighbor of graph.get(current) || []) {
                 if (!visited.has(neighbor)) {
                     path.push(neighbor);
@@ -1278,22 +1292,22 @@ class RdfExplorer {
                     path.pop();
                 }
             }
-    
+
             visited.delete(current);
         };
-    
+
         dfs(this.startNode.id, this.endNode.id, [this.startNode.id]);
-    
+
         if (paths.length === 0) {
             alert("Aucun chemin trouvé.");
             document.getElementById('pathNavigationControls').style.display = 'none';
             return;
         }
-    
+
         this.allPaths = paths;
         this.currentPathIndex = 0;
         this.highlightPath(paths[0]);
-    
+
         if (paths.length >= 2) {
             document.getElementById('pathNavigationControls').style.display = 'block';
             document.getElementById('pathCounter').textContent = `1 / ${paths.length}`;
@@ -1301,7 +1315,7 @@ class RdfExplorer {
             document.getElementById('pathNavigationControls').style.display = 'none';
         }
     }
-    
+
 }
 
 //Demarrage app
