@@ -46,6 +46,19 @@
                 </div>
             </div>
 
+            <div class="panel">
+                <div class="panel-header">➡️​ Label des noeuds</div> 
+                <div class="panel-content">
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="showNodeLabels">
+                            <label for="showNodeLabels">Afficher le nom des noeuds</label>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
             <!-- Apparence -->
             <div class="panel">
                 <div class="panel-header">🎨 Apparence</div>
@@ -61,13 +74,13 @@
                     </div>
 
                     <div class="form-group">
-                        <label>Taille des nœuds</label>
-                        <select class="form-control">
+                        <label for="nodeSizeModeSelect">Taille des nœuds</label>
+                        <select class="form-control" id="nodeSizeModeSelect">
                             <option>Par degré entrant</option>
                             <option>Par degré sortant</option>
                             <option>Par degré total</option>
                         </select>
-                    </div>
+                    </div>                    
 
                     <div class="color-legend" id="colorLegend">                        <!-- //TODO : Extraire les types ou les degrés et definir la couleur-->
                         <div class="legend-item">
@@ -93,6 +106,18 @@
             <!-- Exploration -->
             <div class="panel">
                 <div class="panel-header">🧭 Exploration</div>
+
+                <br/>
+                <div class="form-group">
+                    <label>Exploration par arêtes</label>
+                    <select class="form-control" id="edgeDirectionSelect">
+                        <option>Entrantes + Sortantes</option>
+                        <option>Entrantes</option>
+                        <option>Sortantes</option>
+                    </select>                        
+                </div>
+
+
                 <div class="panel-content">
                     <div class="form-group">
                         <label>Nœud de départ</label>
@@ -110,15 +135,7 @@
                             <span>TODO</span>
                         </div>
                     </div>
-                    
-                    <div class="form-group">
-                        <label>Exploration par arêtes</label>
-                        <select class="form-control" id="edgeDirectionSelect">
-                            <option>Entrantes + Sortantes</option>
-                            <option>Entrantes</option>
-                            <option>Sortantes</option>
-                        </select>                        
-                    </div>
+                
 
                     <button class="btn btn-secondary" id="depthExploreBtn">🎯 Explorer en profondeur</button>
 
@@ -128,7 +145,12 @@
                             style="margin-bottom: 5px;">
                             <button class="btn btn-secondary" id="endNodeBtn">🛑 Sélectionner arrivée</button>
                         <button class="btn btn-secondary" id="shortestPathBtn">⚡ Chemin le plus court</button>
-                        <button class="btn btn-secondary">🗺️ Tous les chemins</button>
+                        <button class="btn btn-secondary" id="allPathsBtn">🗺️ Tous les chemins</button>
+                        <div id="pathNavigationControls" style="display: none; margin-top: 10px; text-align: center;">
+                            <button id="prevPathBtn" class="btn btn-secondary" style="width: auto;">⬅️ </button>
+                            <span id="pathCounter" style="margin: 0 10px;">1 / N</span>
+                            <button id="nextPathBtn" class="btn btn-secondary" style="width: auto;"> ➡️</button>
+                        </div>                        
                     </div>
 
                     <div class="form-group" style="margin-top: 15px;">
