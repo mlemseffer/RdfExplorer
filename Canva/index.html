@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RdfExplorer</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <h1>🕸️ RdfExplorer</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="toggleSimulationBtn">⏸️ Pause Simulation</button>
+                <button class="btn btn-primary" id="importConfigBtn">📁 Importer Configuration (JSON)</button>
+                <input type="file" id="configInput" accept=".json" style="display: none;">
+                <button class="btn btn-primary" id="importRDFBtn">📁 Importer RDF</button>
+                <input type="file" id="fileInput" accept=".ttl" style="display: none;">
+                <button class="btn btn-primary" id="exportRDFConfigBtn">📤 Exporter (RDF+Config)</button>
+                <button class="btn btn-primary" id="exportPNGBtn">📤 Exporter PNG</button>
+            </div>
+        </header>
+
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <!-- Filtres -->
+            <div class="panel">
+                <div class="panel-header">🔍 Filtres d'affichage</div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label>Degré minimum : <span id="minDegreeValue">0</span></label>
+                        <input type="range" class="range-input" min="0" max="10" value="1">
+                        <div class="range-labels">
+                            <span>0</span><span>TODO</span><span>TODO</span>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Types RDF à afficher (noeuds)</label>
+                        <div class="checkbox-group"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div class="panel-header">➡️​ Label des noeuds</div> 
+                <div class="panel-content">
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="showNodeLabels">
+                            <label for="showNodeLabels">Afficher le nom des noeuds</label><br/>
+                            <input type="checkbox" id="hideIsolatedNodes">
+                            <label for="hideIsolatedNodes">Masquer les nœuds isolés</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Apparence -->
+            <div class="panel">
+                <div class="panel-header">🎨 Apparence</div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label>Couleur des nœuds</label>
+                        <select class="form-control" id="nodeColorModeSelect">
+                            <option>Par type RDF</option>
+                            <option>Par degré entrant</option>
+                            <option>Par degré sortant</option>
+                            <option>Par degré total</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="nodeSizeModeSelect">Taille des nœuds</label>
+                        <select class="form-control" id="nodeSizeModeSelect">
+                            <option>Par degré entrant</option>
+                            <option>Par degré sortant</option>
+                            <option>Par degré total</option>
+                        </select>
+                    </div>
+                    <div class="color-legend" id="colorLegend">
+                        <div class="legend-item"><div class="legend-color" style="background: #ff6b6b;"></div><span>Person</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background: #4ecdc4;"></div><span>Org</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background: #45b7d1;"></div><span>Place</span></div>
+                        <div class="legend-item"><div class="legend-color" style="background: #96ceb4;"></div><span>Concept</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Exploration -->
+            <div class="panel">
+                <div class="panel-header">🧭 Exploration</div>
+                <br/>
+                <div class="form-group">
+                    <label>Exploration par arêtes</label>
+                    <select class="form-control" id="edgeDirectionSelect">
+                        <option>Entrantes + Sortantes</option>
+                        <option>Entrantes</option>
+                        <option>Sortantes</option>
+                    </select>                        
+                </div>
+                <div class="panel-content">
+                    <div class="form-group">
+                        <label>Nœud de départ</label>
+                        <input type="text" class="form-control" placeholder="ex: dbr:Paris">
+                    </div>
+                    <button class="btn btn-secondary" id="startNodeBtn">🔰 Sélectionner départ</button>
+                    <div class="form-group">
+                        <label>Profondeur Max : <span id="depthValue">1</span></label>
+                        <input type="range" class="range-input" id="depthRange">
+                        <div class="range-labels" id="depthRangeLabels">
+                            <span>1</span><span>TODO</span><span>TODO</span>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary" id="depthExploreBtn">🎯 Explorer en profondeur</button>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Recherche de chemin</label>
+                        <input type="text" class="form-control" placeholder="Nœud d'arrivée" style="margin-bottom: 5px;">
+                        <button class="btn btn-secondary" id="endNodeBtn">🛑 Sélectionner arrivée</button>
+                        <button class="btn btn-secondary" id="shortestPathBtn">⚡ Chemin le plus court</button>
+                        <button class="btn btn-secondary" id="allPathsBtn">🗺️ Tous les chemins</button>
+                        <div id="pathNavigationControls" style="display: none; margin-top: 10px; text-align: center;">
+                            <button id="prevPathBtn" class="btn btn-secondary" style="width: auto;">⬅️</button>
+                            <span id="pathCounter" style="margin: 0 10px;">1 / N</span>
+                            <button id="nextPathBtn" class="btn btn-secondary" style="width: auto;">➡️</button>
+                        </div>                        
+                    </div>
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label>Reinitialisation</label>
+                        <button id="resetGraphBtn" class="btn btn-secondary">🔄 Nettoyer le graphe</button>
+                        <button id="deleteGraphBtn" class="btn btn-secondary">🔄 Supprimer le graphe</button>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Zone principale -->
+        <main class="main-area">
+            <div class="graph-container">
+                <canvas id="graphCanvas"></canvas>
+                <div class="graph-overlay">
+                    📊 Graphe: 0 nœuds • 0 arêtes • <span id="zoom">Zoom : 100%</span>
+                </div>
+            </div>
+        </main>
+
+        <!-- Toolbar droite -->
+        <aside class="toolbar">
+            <div class="panel">
+                <div class="panel-header">ℹ️ Nœud sélectionné</div>
+                <div class="panel-content">
+                    <strong>Cliquez sur un noeud</strong><br>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">📈 Statistiques</div>
+                <div class="panel-content">
+                    <div class="stats-item"><span>Triplets totaux:</span><span class="stats-value">TODO</span></div>
+                    <div class="stats-item"><span>Nœuds uniques:</span><span class="stats-value">TODO</span></div>
+                    <div class="stats-item"><span>Prédicats uniques:</span><span class="stats-value">TODO</span></div>
+                    <div class="stats-item"><span>Nœuds isolés:</span><span class="stats-value">TODO</span></div>
+                    <div style="margin-top: 15px;">
+                        <label style="font-size: 13px; font-weight: 600;">Distribution par type:</label>
+                        <div class="stats-item"><span>foaf:Person</span><span class="stats-value">TODO</span></div>
+                        <div class="stats-item"><span>dbo:Organization</span><span class="stats-value">TODO</span></div>
+                        <div class="stats-item"><span>dbo:Place</span><span class="stats-value">TODO</span></div>
+                        <div class="stats-item"><span>skos:Concept</span><span class="stats-value">TODO</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">➡️​ Label des arêtes</div> 
+                <div class="panel-content">
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="showEdgeLabels">
+                            <label for="showEdgeLabels">Afficher le nom des arêtes</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">🔗 Prédicats actifs</div>
+                <div class="panel-content">
+                    <div class="checkbox-group"></div>
+                </div>
+            </div>
+            <div class="panel">
+                <div class="panel-header">🗺️ Vue d'ensemble</div>
+                <div class="panel-content">
+                    <div class="node-preview">
+                        <canvas id="miniMapCanvas" width="250" height="150"></canvas>
+                    </div>
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://unpkg.com/n3@1.14.0/browser/n3.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
