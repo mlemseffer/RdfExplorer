@@ -1208,49 +1208,46 @@ class RdfExplorer {
     }
 
     async exploreFromStartNode(maxDepth = 3, delay = 1000) {
-        //Mode d'emploi : 
-            // Explore le graphe depuis un nœud de départ selon une profondeur et direction
+        // Vérifie que le nœud de départ est défini
         if (!this.startNode) {
             alert("Veuillez sélectionner un nœud de départ.");
             return;
         }
-
-        const direction = this.exploreDirectionSelect.value; // récupère la direction sélectionnée
+    
+        const direction = this.exploreDirectionSelect.value; // "Entrantes", "Sortantes", ou "Entrantes + Sortantes"
         const visited = new Set();
         const layers = [];
         const queue = [{ node: this.startNode, depth: 0 }];
         visited.add(this.startNode.id);
-
+    
         while (queue.length > 0) {
             const { node, depth } = queue.shift();
             if (!layers[depth]) layers[depth] = [];
             layers[depth].push(node);
-
+    
             if (depth < maxDepth) {
-                const neighbors = this.graph.links.flatMap(link => {
-                    let neighbors = [];
-
+                const neighbors = this.visibleLinks.flatMap(link => {
                     const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
                     const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-
-                    const sourceNode = typeof link.source === 'object' ? link.source : this.graph.nodes.find(n => n.id === link.source);
-                    const targetNode = typeof link.target === 'object' ? link.target : this.graph.nodes.find(n => n.id === link.target);
-
-                    if (direction === 'Entrantes' || direction === 'Entrantes + Sortantes') {
-                        if (targetId === node.id && !visited.has(sourceId)) {
-                            neighbors.push(sourceNode);
-                        }
+    
+                    const sourceNode = typeof link.source === 'object' ? link.source : this.visibleNodes.find(n => n.id === sourceId);
+                    const targetNode = typeof link.target === 'object' ? link.target : this.visibleNodes.find(n => n.id === targetId);
+    
+                    const neighbors = [];
+    
+                    if ((direction === 'Entrantes' || direction === 'Entrantes + Sortantes') &&
+                        targetId === node.id && !visited.has(sourceId)) {
+                        neighbors.push(sourceNode);
                     }
-
-                    if (direction === 'Sortantes' || direction === 'Entrantes + Sortantes') {
-                        if (sourceId === node.id && !visited.has(targetId)) {
-                            neighbors.push(targetNode);
-                        }
+    
+                    if ((direction === 'Sortantes' || direction === 'Entrantes + Sortantes') &&
+                        sourceId === node.id && !visited.has(targetId)) {
+                        neighbors.push(targetNode);
                     }
-
+    
                     return neighbors;
                 });
-
+    
                 neighbors.forEach(n => {
                     if (!visited.has(n.id)) {
                         visited.add(n.id);
@@ -1259,13 +1256,15 @@ class RdfExplorer {
                 });
             }
         }
-
+    
+        // Affiche visuellement chaque couche avec délai
         for (let d = 0; d < layers.length; d++) {
             const layer = layers[d];
             this.highlightLayer(layer);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
     }
+    
 
     highlightLayer(nodes) {
         //Mode d'emploi : 
