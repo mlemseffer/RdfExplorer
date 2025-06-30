@@ -14,6 +14,7 @@
         <header class="header">
             <h1>🕸️ RdfExplorer</h1>
             <div class="header-actions">
+                <button class="btn btn-primary" id="toggleSimulationBtn">⏸️ Pause Simulation</button>
                 <button class="btn btn-primary" id="importConfigBtn">📁 Importer Configuration (JSON)</button>
                 <input type="file" id="configInput" accept=".json" style="display: none;">
                 <button class="btn btn-primary" id="importRDFBtn">📁 Importer RDF</button>
@@ -31,8 +32,8 @@
                 <div class="panel-content">
                     <div class="form-group">
                         <label>Degré minimum : <span id="minDegreeValue">0</span></label>
-                        <input type="range" class="range-input" min="0" max="10" value="1">
-                        <div class="range-labels">
+                        <input type="range" id="degreeRangeInput" class="range-input" min="0" max="10" value="1">
+                        <div class="range-labels" id="degreeRangeLabels">
                             <span>0</span>
                             <span>TODO</span>
                             <span>TODO</span>
@@ -41,7 +42,7 @@
 
                     <div class="form-group"> <!--//TODO : Extraire les rdf:type-->
                         <label>Types RDF à afficher (noeuds)</label>
-                        <div class="checkbox-group"></div>
+                        <div class="checkbox-group" id="rdfTypesCheckboxes"></div>
                     </div>
                 </div>
             </div>
@@ -54,7 +55,6 @@
                             <input type="checkbox" id="showNodeLabels">
                             <label for="showNodeLabels">Afficher le nom des noeuds</label>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -121,7 +121,7 @@
                 <div class="panel-content">
                     <div class="form-group">
                         <label>Nœud de départ</label>
-                        <input type="text" class="form-control" placeholder="ex: dbr:Paris">
+                        <input type="text" class="form-control" placeholder="ex: dbr:Paris" id="startNodeInput">
                     </div>
 
                     <button class="btn btn-secondary" id="startNodeBtn">🔰 Sélectionner départ</button>
@@ -141,8 +141,7 @@
 
                     <div class="form-group" style="margin-top: 15px;">
                         <label>Recherche de chemin</label>
-                        <input type="text" class="form-control" placeholder="Nœud d'arrivée"
-                            style="margin-bottom: 5px;">
+                        <input type="text" class="form-control" placeholder="Nœud d'arrivée" id="endNodeInput">
                             <button class="btn btn-secondary" id="endNodeBtn">🛑 Sélectionner arrivée</button>
                         <button class="btn btn-secondary" id="shortestPathBtn">⚡ Chemin le plus court</button>
                         <button class="btn btn-secondary" id="allPathsBtn">🗺️ Tous les chemins</button>
@@ -164,8 +163,8 @@
 
         <!-- Zone principale - Graphe -->
         <main class="main-area">
-            <div class="graph-container">
-                <div class="graph-overlay">
+            <div class="graph-container" id="graphContainer">
+                <div class="graph-overlay" id="graphOverlay">
                     📊 Graphe: 0 nœuds • 0 arêtes • <span id="zoom">Zoom : 100%</span>
                 </div>
             </div>
@@ -174,7 +173,7 @@
         <!-- Toolbar droite - Analyses -->
         <aside class="toolbar">
             <!-- Informations sur le nœud sélectionné -->
-            <div class="panel">
+            <div class="panel-content" id="selectedNodeInfo">
                 <div class="panel-header">ℹ️ Nœud sélectionné</div>
                 <div class="panel-content">
                     <strong>Cliquez sur un noeud</strong><br>
@@ -182,9 +181,9 @@
             </div>
 
             <!-- Statistiques -->
-            <div class="panel">
+            <div class="panel" id="stats-panel">
                 <div class="panel-header">📈 Statistiques</div>
-                <div class="panel-content">
+                <div class="panel-content" id="statsPanelContent">
                     <div class="stats-item">
                         <span>Triplets totaux:</span>
                         <span class="stats-value">TODO</span>
@@ -239,15 +238,12 @@
             </div>
 
             <!-- Prédicats -->
-            <div class="panel">
+            <div class="panel" id="predicate-panel">
                 <div class="panel-header">🔗 Prédicats actifs</div> <!-- //TODO : Extraire les prédicats-->
-                <div class="panel-content">
-                    <div class="checkbox-group">
-                        <div class="checkbox-item">
-                            <input type="checkbox" id="hideIsolatedNodes">
-                            <label for="hideIsolatedNodes">Masquer les nœuds isolés</label>
-                        </div>
-
+                <div class="panel-content" id="predicatePanelContent">
+                    <div class="checkbox-group" id="predicateCheckboxes">
+                        <input type="checkbox" id="hideIsolatedNodes">
+                        <label for="hideIsolatedNodes">Masquer les nœuds isolés</label>
                     </div>
                 </div>
             </div>
