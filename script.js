@@ -807,7 +807,8 @@ class RdfExplorer {
     dragstarted(event, d) {
         //Mode d'emploi : 
             // Permet de déplacer manuellement les nœuds du graphe
-
+        
+        if (this.simulationPaused) return; // Désactive le déplacement si en pause
         if (!event.active) this.simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
@@ -816,6 +817,8 @@ class RdfExplorer {
     dragged(event, d) {
         //Mode d'emploi : 
             // Permet de déplacer manuellement les nœuds du graphe
+
+        if (this.simulationPaused) return; // Désactive le déplacement si en pause
         d.fx = event.x;
         d.fy = event.y;
     }
@@ -823,6 +826,8 @@ class RdfExplorer {
     dragended(event, d) {
         //Mode d'emploi : 
             // Permet de déplacer manuellement les nœuds du graphe
+            
+        if (this.simulationPaused) return; // Désactive le déplacement si en pause
         if (!event.active) this.simulation.alphaTarget(0);
         d.fx = null;
         d.fy = null;
@@ -1267,8 +1272,8 @@ class RdfExplorer {
             // Met en évidence visuellement une couche de nœuds dans l’exploration
         this.svg.selectAll('.nodes circle')
             .filter(d => nodes.includes(d))
-            .transition()
-            .duration(300)
+            .attr('stroke', '#FFD700')
+            .attr('stroke-width', 6)
             .attr('stroke', '#FFD700') // Jaune pétant
             .attr('stroke-width', 6);
     }
