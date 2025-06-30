@@ -661,7 +661,7 @@ class RdfExplorer {
         const overlay = document.getElementById('graphOverlay');
         overlay.innerHTML = `📊 Graphe: ${visibleNodes.length} nœuds • ${visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
     
-        this.updateDepthSlider(this.visibleNodes.length - 1);
+        this.updateDepthSlider(10); //Max théorique this.visibleNodes.length - 1
         this.updateNodeColors();
     }    
 
