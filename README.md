@@ -48,7 +48,7 @@ RdfExplorer-main/
 
 1. Clonez le dépôt ou téléchargez le ZIP :
 ```bash
-git clone https://github.com/votre-utilisateur/RdfExplorer.git
+git clone https://github.com/mlemseffer/RdfExplorer.git
 ```
 
 2. Ouvrez simplement `index.html` dans votre navigateur :
