@@ -22,10 +22,12 @@ class RdfExplorer {
         this.showEdgeLabels = false;
         this.showNodeLabels = false;
         this.minDegreeFilter = 0;
+        this.gravityForce = -200;
 
-        //Taille des noeuds
+        //Tailles et couleurs
         this.nodeSizeMode = 'in';
         this.nodeColorMode = 'type';
+        this.edgeColorMode = 'predicate';
 
         //Attributs de l'exploration
         this.startNodeInput = document.getElementById('startNodeInput');
@@ -37,6 +39,11 @@ class RdfExplorer {
 
         //Pause
         this.simulationPaused = false;
+        
+        this.isSubgraphMode = false;
+        this.previousVisibleNodes = [];
+        this.previousVisibleLinks = [];
+
 
         this.init();
     }
@@ -225,6 +232,21 @@ class RdfExplorer {
         document.getElementById('toggleSimulationBtn').addEventListener('click', () => {
             this.toggleSimulation();
         });        
+
+        document.getElementById('SubGraphBtn').addEventListener('click', () => {
+            if (this.isSubgraphMode) {
+                this.resetToFullGraph();
+            } else {
+                this.showSubgraph();
+            }
+        });
+        
+        const edgeColorSelect = document.getElementById('edgeColorModeSelect');
+        edgeColorSelect.addEventListener('change', (e) => {
+            const value = e.target.value;
+            this.edgeColorMode = value.includes('prédicats') ? 'predicate' : 'none';
+            this.updateEdgeColors(); // appliquer sans relancer tout renderGraph
+        });
 
     }
 
@@ -477,6 +499,8 @@ class RdfExplorer {
         this.svg.append('g').attr('class', 'zoom-group');
         this.svg.select('.zoom-group').append('g').attr('class', 'links');
         this.svg.select('.zoom-group').append('g').attr('class', 'nodes');
+
+        this.updateDepthSlider(10);
     }
 
     updateZoomLabel(k) {
@@ -491,9 +515,6 @@ class RdfExplorer {
     }
 
     renderGraph() {
-        //Mode d'emploi : 
-            // Affiche le graphe selon les paramètres de filtre et style actifs
-
         if (!this.svg || this.graph.nodes.length === 0) return;
     
         const width = this.svg.node().getBoundingClientRect().width;
@@ -509,33 +530,42 @@ class RdfExplorer {
             .domain(d3.extent(this.graph.nodes, sizeAccessor))
             .range([8, 30]);
     
-        const predicateFilteredLinks = this.graph.links.filter(l => this.activePredicates.has(l.predicate));
+        let visibleNodes, visibleLinks;
     
-        const usedNodeIds = new Set();
-        predicateFilteredLinks.forEach(link => {
-            const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-            const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-            usedNodeIds.add(sourceId);
-            usedNodeIds.add(targetId);
-        });
+        if (this.isSubgraphMode) {
+            visibleNodes = this.visibleNodes;
+            visibleLinks = this.visibleLinks;
+        } else {
+            const predicateFilteredLinks = this.graph.links.filter(l => this.activePredicates.has(l.predicate));
     
-        const visibleNodes = this.graph.nodes.filter(n => {
-            const totalDegree = n.inDegree + n.outDegree;
-            const passesDegree = totalDegree >= this.minDegreeFilter;
-            const isConnected = !this.hideIsolatedNodes || usedNodeIds.has(n.id);
-            const isVisibleType = this.activeTypes ? this.activeTypes.has(n.type) : true;
-            return passesDegree && isConnected && isVisibleType;
-        });
+            const usedNodeIds = new Set();
+            predicateFilteredLinks.forEach(link => {
+                const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+                const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+                usedNodeIds.add(sourceId);
+                usedNodeIds.add(targetId);
+            });
     
+            visibleNodes = this.graph.nodes.filter(n => {
+                const totalDegree = n.inDegree + n.outDegree;
+                const passesDegree = totalDegree >= this.minDegreeFilter;
+                const isConnected = !this.hideIsolatedNodes || usedNodeIds.has(n.id);
+                const isVisibleType = this.activeTypes ? this.activeTypes.has(n.type) : true;
+                return passesDegree && isConnected && isVisibleType;
+            });
+    
+            const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
+            visibleLinks = predicateFilteredLinks.filter(l =>
+                visibleNodeIds.has(typeof l.source === 'object' ? l.source.id : l.source) &&
+                visibleNodeIds.has(typeof l.target === 'object' ? l.target.id : l.target)
+            );
+    
+            this.visibleNodes = visibleNodes;
+            this.visibleLinks = visibleLinks;
+        }
+    
+        // Correction de cas de sélection de nœud invalide
         const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-        const visibleLinks = predicateFilteredLinks.filter(l =>
-            visibleNodeIds.has(typeof l.source === 'object' ? l.source.id : l.source) &&
-            visibleNodeIds.has(typeof l.target === 'object' ? l.target.id : l.target)
-        );
-    
-        this.visibleNodes = visibleNodes;
-        this.visibleLinks = visibleLinks;
-    
         if (this.startNode && !visibleNodeIds.has(this.startNode.id)) {
             this.startNode = null;
             this.startNodeInput.value = '';
@@ -545,12 +575,12 @@ class RdfExplorer {
             this.endNodeInput.value = '';
         }
     
+        // Simulation D3
         this.simulation = d3.forceSimulation(visibleNodes)
             .force('link', d3.forceLink(visibleLinks).id(d => d.id).distance(100))
-            .force('charge', d3.forceManyBody().strength(-200)) //Force de gravité, peut être changée pour optimiser la simulation
-            .force('center', d3.forceCenter(width / 2, height / 2))
-            
-        //Respecter l'état de pause
+            .force('charge', d3.forceManyBody().strength(this.gravityForce))
+            .force('center', d3.forceCenter(width / 2, height / 2));
+    
         const pauseBtn = document.getElementById('toggleSimulationBtn');
         if (this.simulationPaused) {
             this.simulation.stop();
@@ -645,25 +675,25 @@ class RdfExplorer {
     
             this.updateMiniMap(visibleNodes, visibleLinks);
         });
-
-        //Sanity check si on avait selectionné les "tous les chemins" auparavant
+    
+        // Nettoyage des anciens chemins si besoin
         if (this.allPaths.length > 0) {
-            const allNodeIds = new Set(this.visibleNodes.map(n => n.id));
+            const allNodeIds = new Set(visibleNodes.map(n => n.id));
             const isPathStillValid = this.allPaths.some(path => path.every(id => allNodeIds.has(id)));
-        
             if (!isPathStillValid) {
                 this.allPaths = [];
                 this.currentPathIndex = 0;
                 document.getElementById('pathNavigationControls').style.display = 'none';
             }
-        }        
+        }
     
         const overlay = document.getElementById('graphOverlay');
         overlay.innerHTML = `📊 Graphe: ${visibleNodes.length} nœuds • ${visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
     
-        this.updateDepthSlider(10); //Max théorique this.visibleNodes.length - 1
         this.updateNodeColors();
-    }    
+        this.updateEdgeColors();
+    }
+     
 
     selectNode(node) {
         //Mode d'emploi : 
@@ -808,8 +838,7 @@ class RdfExplorer {
         //Mode d'emploi : 
             // Permet de déplacer manuellement les nœuds du graphe
         
-        if (this.simulationPaused) return; // Désactive le déplacement si en pause
-        if (!event.active) this.simulation.alphaTarget(0.3).restart();
+        if (!event.active && !this.simulationPaused) this.simulation.alphaTarget(0.3).restart();
         d.fx = d.x;
         d.fy = d.y;
     }
@@ -818,19 +847,48 @@ class RdfExplorer {
         //Mode d'emploi : 
             // Permet de déplacer manuellement les nœuds du graphe
 
-        if (this.simulationPaused) return; // Désactive le déplacement si en pause
         d.fx = event.x;
         d.fy = event.y;
+        
+        // Mise à jour manuelle si la simulation est en pause
+        if (this.simulationPaused) {
+            d.x = event.x;
+            d.y = event.y;
+            this.svg.selectAll('.nodes circle')
+                .filter(n => n.id === d.id)
+                .attr('cx', d.x)
+                .attr('cy', d.y);
+    
+            if (this.showNodeLabels) {
+                this.svg.selectAll('.nodes text')
+                    .filter(n => n.id === d.id)
+                    .attr('x', d.x)
+                    .attr('y', d.y);
+            }
+    
+            this.svg.selectAll('.zoom-group .links line')
+                .attr('x1', l => l.source.x)
+                .attr('y1', l => l.source.y)
+                .attr('x2', l => l.target.x)
+                .attr('y2', l => l.target.y);
+    
+            this.svg.selectAll('.zoom-group .links text')
+                .attr('x', l => (l.source.x + l.target.x) / 2)
+                .attr('y', l => (l.source.y + l.target.y) / 2);
+    
+            this.updateMiniMap(this.visibleNodes, this.visibleLinks);
+        }
     }
 
     dragended(event, d) {
         //Mode d'emploi : 
             // Permet de déplacer manuellement les nœuds du graphe
             
-        if (this.simulationPaused) return; // Désactive le déplacement si en pause
-        if (!event.active) this.simulation.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
+        if (!event.active && !this.simulationPaused) this.simulation.alphaTarget(0);
+        if (!this.simulationPaused) {
+            d.fx = null;
+            d.fy = null;
+        }
     }
 
     updateDegreeSlider() {
@@ -859,11 +917,11 @@ class RdfExplorer {
         document.getElementById('minDegreeValue').textContent = min;
     }
 
-    updateColorLegend(colorScale) {
+    updatecolorNodeLegend(colorScale) {
         //Mode d'emploi : 
             // Affiche la légende de couleurs selon le mode actif
 
-        const legendContainer = document.getElementById('colorLegend');
+        const legendContainer = document.getElementById('colorNodeLegend');
         legendContainer.innerHTML = '';
 
         if (!colorScale) return; // ne rien afficher si mode degré
@@ -1513,7 +1571,7 @@ class RdfExplorer {
                 return colorScale(d.inDegree + d.outDegree);
             });
     
-        this.updateColorLegend(colorScale);
+        this.updatecolorNodeLegend(colorScale);
     }
 
     toggleSimulation() {
@@ -1533,6 +1591,120 @@ class RdfExplorer {
             btn.textContent = '⏸️ Pause Simulation';
         }
     }    
+
+    showSubgraph() {
+        if (!this.startNode) {
+            alert("Veuillez sélectionner un nœud de départ.");
+            return;
+        }
+    
+        const maxDepth = parseInt(document.getElementById('depthRange').value);
+        const direction = this.exploreDirectionSelect.value;
+    
+        const visited = new Set();
+        const queue = [{ node: this.startNode, depth: 0 }];
+        visited.add(this.startNode.id);
+    
+        while (queue.length > 0) {
+            const { node, depth } = queue.shift();
+            if (depth >= maxDepth) continue;
+    
+            this.visibleLinks.forEach(link => {
+                const source = typeof link.source === 'object' ? link.source : this.graph.nodes.find(n => n.id === link.source);
+                const target = typeof link.target === 'object' ? link.target : this.graph.nodes.find(n => n.id === link.target);
+    
+                if (!source || !target) return;
+    
+                const srcId = source.id;
+                const tgtId = target.id;
+    
+                if ((direction.includes("Entrantes") && tgtId === node.id && !visited.has(srcId))) {
+                    visited.add(srcId);
+                    queue.push({ node: source, depth: depth + 1 });
+                }
+    
+                if ((direction.includes("Sortantes") && srcId === node.id && !visited.has(tgtId))) {
+                    visited.add(tgtId);
+                    queue.push({ node: target, depth: depth + 1 });
+                }
+            });
+        }
+    
+        const newVisibleNodeIds = visited;
+        const newVisibleNodes = this.graph.nodes.filter(n => newVisibleNodeIds.has(n.id));
+        const newVisibleLinks = this.graph.links.filter(l =>
+            newVisibleNodeIds.has(typeof l.source === 'object' ? l.source.id : l.source) &&
+            newVisibleNodeIds.has(typeof l.target === 'object' ? l.target.id : l.target)
+        );
+    
+        // Sauvegarde l'affichage complet
+        this.previousVisibleNodes = this.visibleNodes;
+        this.previousVisibleLinks = this.visibleLinks;
+    
+        // Mise à jour du mode sous-graphe
+        this.visibleNodes = newVisibleNodes;
+        this.visibleLinks = newVisibleLinks;
+        this.isSubgraphMode = true;
+    
+        this.renderGraph();
+    
+        // Changer le texte du bouton
+        document.getElementById('SubGraphBtn').textContent = '🌳 Afficher le graphe entier';
+    }
+
+    resetToFullGraph() {
+        this.visibleNodes = this.previousVisibleNodes;
+        this.visibleLinks = this.previousVisibleLinks;
+        this.isSubgraphMode = false;
+        this.renderGraph();
+    
+        document.getElementById('SubGraphBtn').textContent = '🕸️ Afficher le sous graphe';
+    }
+
+    updateEdgeColors() {
+        const linkSelection = this.svg.selectAll('.zoom-group .links line');
+    
+        if (this.edgeColorMode === 'predicate') {
+            const predicates = Array.from(new Set(this.graph.links.map(l => l.predicate))).sort();
+            const colorPalette = d3.schemeTableau10.concat(d3.schemeSet3);
+            const colorScale = d3.scaleOrdinal()
+                .domain(predicates)
+                .range(colorPalette.slice(0, predicates.length));
+    
+            linkSelection
+                .transition()
+                .duration(300)
+                .attr('stroke', d => colorScale(d.predicate));
+    
+            this.updateEdgeColorLegend(colorScale);
+        } else {
+            linkSelection
+                .transition()
+                .duration(300)
+                .attr('stroke', '#9ca3af');
+    
+            this.updateEdgeColorLegend(null);
+        }
+    }
+
+    updateEdgeColorLegend(scale) {
+        const legendContainer = document.getElementById('colorEdgeLegend');
+        legendContainer.innerHTML = '';
+    
+        if (!scale) return;
+    
+        scale.domain().forEach(pred => {
+            const color = scale(pred);
+            const item = document.createElement('div');
+            item.className = 'legend-item';
+            item.innerHTML = `
+                <div class="legend-color" style="background: ${color};"></div>
+                <span>${this.extractLabel(pred)}</span>
+            `;
+            legendContainer.appendChild(item);
+        });
+    }    
+
 }
 
 //Demarrage app
