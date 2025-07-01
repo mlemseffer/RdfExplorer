@@ -41,7 +41,7 @@
                     </div>
 
                     <div class="form-group"> <!--//TODO : Extraire les rdf:type-->
-                        <label>Types RDF à afficher (noeuds)</label>
+                        <label>Types RDF des noeuds</label>
                         <div class="checkbox-group" id="rdfTypesCheckboxes"></div>
                     </div>
                 </div>
@@ -59,49 +59,30 @@
                 </div>
             </div>
 
-            <!-- Apparence -->
-            <div class="panel">
-                <div class="panel-header">🎨 Apparence</div>
-                <div class="panel-content">
-                    <div class="form-group">
-                        <label>Couleur des nœuds</label>
-                        <select class="form-control" id="nodeColorModeSelect">
-                            <option>Par type RDF</option>
-                            <option>Par degré entrant</option>
-                            <option>Par degré sortant</option>
-                            <option>Par degré total</option>
-                        </select>                        
-                    </div>
-
-                    <div class="form-group">
-                        <label for="nodeSizeModeSelect">Taille des nœuds</label>
-                        <select class="form-control" id="nodeSizeModeSelect">
-                            <option>Par degré entrant</option>
-                            <option>Par degré sortant</option>
-                            <option>Par degré total</option>
-                        </select>
-                    </div>                    
-
-                    <div class="color-legend" id="colorLegend">                        <!-- //TODO : Extraire les types ou les degrés et definir la couleur-->
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #ff6b6b;"></div>
-                            <span>Person</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #4ecdc4;"></div>
-                            <span>Org</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #45b7d1;"></div>
-                            <span>Place</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="legend-color" style="background: #96ceb4;"></div>
-                            <span>Concept</span>
-                        </div>
+            <!-- Prédicats -->
+            <div class="panel" id="predicate-panel">
+                <div class="panel-header">🔗 Prédicats actifs</div> <!-- //TODO : Extraire les prédicats-->
+                <div class="panel-content" id="predicatePanelContent">
+                    <div class="checkbox-group" id="predicateCheckboxes">
+                        <input type="checkbox" id="hideIsolatedNodes">
+                        <label for="hideIsolatedNodes">Masquer les nœuds isolés</label>
                     </div>
                 </div>
             </div>
+
+            <div class="panel">
+                <div class="panel-header">➡️​ Label des arêtes</div> 
+                <div class="panel-content">
+                    <div class="checkbox-group">
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="showEdgeLabels">
+                            <label for="showEdgeLabels">Afficher le nom des arêtes</label>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
 
             <!-- Exploration -->
             <div class="panel">
@@ -138,6 +119,7 @@
                 
 
                     <button class="btn btn-secondary" id="depthExploreBtn">🎯 Explorer en profondeur</button>
+                    <button class="btn btn-secondary" id="SubGraphBtn">🕸️​ Afficher le sous graphe</button>
 
                     <div class="form-group" style="margin-top: 15px;">
                         <label>Recherche de chemin</label>
@@ -223,28 +205,45 @@
                 </div>
             </div>
 
-
+            <!-- Apparence -->
             <div class="panel">
-                <div class="panel-header">➡️​ Label des arêtes</div> 
+                <div class="panel-header">🎨 Apparence</div>
                 <div class="panel-content">
-                    <div class="checkbox-group">
-                        <div class="checkbox-item">
-                            <input type="checkbox" id="showEdgeLabels">
-                            <label for="showEdgeLabels">Afficher le nom des arêtes</label>
-                        </div>
-
+                    <div class="form-group">
+                        <label>Couleur des nœuds</label>
+                        <select class="form-control" id="nodeColorModeSelect">
+                            <option>Par type RDF</option>
+                            <option>Par degré entrant</option>
+                            <option>Par degré sortant</option>
+                            <option>Par degré total</option>
+                        </select>                        
                     </div>
-                </div>
-            </div>
-
-            <!-- Prédicats -->
-            <div class="panel" id="predicate-panel">
-                <div class="panel-header">🔗 Prédicats actifs</div> <!-- //TODO : Extraire les prédicats-->
-                <div class="panel-content" id="predicatePanelContent">
-                    <div class="checkbox-group" id="predicateCheckboxes">
-                        <input type="checkbox" id="hideIsolatedNodes">
-                        <label for="hideIsolatedNodes">Masquer les nœuds isolés</label>
+                    
+                    <div class="color-legend" id="colorNodeLegend">     
+                        <div class="legend-item"> </div>
                     </div>
+
+                    <div class="form-group">
+                        <label for="nodeSizeModeSelect"><br>Taille des nœuds</label>
+                        <select class="form-control" id="nodeSizeModeSelect">
+                            <option>Par degré entrant</option>
+                            <option>Par degré sortant</option>
+                            <option>Par degré total</option>
+                        </select>
+                    </div>            
+                    
+                    <div class="form-group">
+                        <label for="edgeColorModeSelect">Couleur des arêtes</label>
+                        <select class="form-control" id="edgeColorModeSelect">
+                            <option>Par prédicats</option>
+                            <option>Pas de coloration</option>
+                        </select>
+                    </div>       
+                    
+                    <div class="color-legend" id="colorEdgeLegend">     
+                        <div class="legend-item"> </div>
+                    </div>
+                    
                 </div>
             </div>
 
@@ -260,8 +259,8 @@
         </aside>
     </div>
 
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <script src="https://unpkg.com/n3@1.14.0/browser/n3.min.js"></script>
+    <script src="libs/d3.v7.min.js"></script>
+    <script src="libs/n3.min.js"></script>  
     <script src="script.js"></script>
 </body>
 
