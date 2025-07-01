@@ -84,22 +84,7 @@ open index.html
 
 ---
 
-## 📝 Licence
-
-Ce projet est distribué sous la licence MIT. Voir le fichier `LICENSE` pour plus d'informations.
-
----
-
-## 🙌 Contribuer
-
-Les contributions sont les bienvenues ! Pour proposer une amélioration :
-- Forkez le projet
-- Créez une branche `feature/ma-feature`
-- Soumettez une Pull Request
-
----
-
 ## 📫 Contact
 
 Pour toute question ou suggestion :
-[Email](mailto:votre.email@domaine.com)
+[Email](mailto:mohamed.lemseffer@insa-lyon.fr)
