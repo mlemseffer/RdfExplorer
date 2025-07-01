@@ -86,5 +86,4 @@ open index.html
 
 ## 📫 Contact
 
-Pour toute question ou suggestion :
-[Email](mailto:mohamed.lemseffer@insa-lyon.fr)
+Pour toute question ou suggestion : mohamed.lemseffer@insa-lyon.fr
