@@ -1,6 +1,7 @@
 class RdfExplorer {
     constructor() {
-
+        //Regler le pb des unknown
+        //Regarder ldViz
         this.graph = {
             nodes: [],
             links: [],
@@ -355,6 +356,25 @@ class RdfExplorer {
             if (triple.predicate.includes('type') || triple.predicate === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
                 if (nodeMap.has(triple.subject)) {
                     nodeMap.get(triple.subject).type = this.categorizeType(triple.object);
+                }
+            }
+            if (triple.predicate.toLowerCase().includes('topic')&&triple.predicate.toLowerCase().includes('has')) { //Specifique pour le graphe de cours
+                if (nodeMap.has(triple.object)) {
+                    nodeMap.get(triple.object).type = "topics";
+                }
+            }
+        });
+
+        nodeMap.forEach(node => {
+            if (node.type === 'unknown' && (node.id.startsWith('http://') || node.id.startsWith('https://'))) {
+                if (node.id.includes('xmlns.com/foaf/0.1/')||node.id.includes('schema.org')) {
+                    // Cas spécial foaf : on considère directement comme une classe
+                    node.type = "Class"; 
+                } else {
+                    const segments = node.id.split('/').filter(Boolean);
+                    if (segments.length >= 2) {
+                        node.type = segments[segments.length - 2]; // avant-dernier segment
+                    }
                 }
             }
         });
@@ -1317,22 +1337,40 @@ class RdfExplorer {
     
         // Affiche visuellement chaque couche avec délai
         for (let d = 0; d < layers.length; d++) {
-            const layer = layers[d];
-            this.highlightLayer(layer);
+            const currentLayer = layers[d];
+            const previousLayer = d > 0 ? layers[d - 1] : [];
+            this.highlightLayer(currentLayer, previousLayer);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
+        
     }
     
 
-    highlightLayer(nodes) {
+    highlightLayer(currentLayerNodes, previousLayerNodes) {
         //Mode d'emploi : 
             // Met en évidence visuellement une couche de nœuds dans l’exploration
+        const currentIds = new Set(currentLayerNodes.map(n => n.id));
+        const previousIds = new Set(previousLayerNodes.map(n => n.id));
+    
+        // Surligner les nœuds de la couche actuelle
         this.svg.selectAll('.nodes circle')
-            .filter(d => nodes.includes(d))
+            .filter(d => currentIds.has(d.id))
             .attr('stroke', '#FFD700')
-            .attr('stroke-width', 6)
-            .attr('stroke', '#FFD700') // Jaune pétant
             .attr('stroke-width', 6);
+    
+        // Surligner les arêtes entre couches n et n-1
+        this.svg.selectAll('.zoom-group .links line')
+            .filter(d => {
+                const src = typeof d.source === 'object' ? d.source.id : d.source;
+                const tgt = typeof d.target === 'object' ? d.target.id : d.target;
+    
+                return (
+                    (currentIds.has(src) && previousIds.has(tgt)) ||
+                    (currentIds.has(tgt) && previousIds.has(src))
+                );
+            })
+            .attr('stroke', '#FFD700')
+            .attr('stroke-width', 4);
     }
 
     resetGraphView() {
