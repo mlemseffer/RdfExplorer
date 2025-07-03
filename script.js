@@ -45,6 +45,8 @@ class RdfExplorer {
         this.previousVisibleNodes = [];
         this.previousVisibleLinks = [];
 
+        this.subgraphNodes = [];
+        this.subgraphLinks = [];
 
         this.init();
     }
@@ -95,7 +97,7 @@ class RdfExplorer {
 
         //Bouton pour supprimer le graphe
         document.getElementById('deleteGraphBtn').addEventListener('click', () => {
-            this.deleteGraph();
+            location.reload();
         });
 
         //Bouton pour réinitialiser le graphe
@@ -535,8 +537,48 @@ class RdfExplorer {
     }
 
     renderGraph() {
-        if (!this.svg || this.graph.nodes.length === 0) return;
+        if (!this.svg) return;
     
+        // 1. Source de données selon le mode (entier ou sous-graphe)
+        let sourceNodes, sourceLinks;
+        if (this.isSubgraphMode) {
+            sourceNodes = this.subgraphNodes;
+            sourceLinks = this.subgraphLinks;
+        } else {
+            sourceNodes = this.graph.nodes;
+            sourceLinks = this.graph.links;
+        }
+    
+        // 2. Application des filtres de la sidebar
+        const predicateFilteredLinks = sourceLinks.filter(l => this.activePredicates.has(l.predicate));
+    
+        const usedNodeIds = new Set();
+        predicateFilteredLinks.forEach(link => {
+            const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
+            const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+            usedNodeIds.add(sourceId);
+            usedNodeIds.add(targetId);
+        });
+    
+        const visibleNodes = sourceNodes.filter(n => {
+            const totalDegree = n.inDegree + n.outDegree;
+            const passesDegree = totalDegree >= this.minDegreeFilter;
+            const isConnected = !this.hideIsolatedNodes || usedNodeIds.has(n.id);
+            const isVisibleType = this.activeTypes ? this.activeTypes.has(n.type) : true;
+            return passesDegree && isConnected && isVisibleType;
+        });
+    
+        const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
+        const visibleLinks = predicateFilteredLinks.filter(l =>
+            visibleNodeIds.has(typeof l.source === 'object' ? l.source.id : l.source) &&
+            visibleNodeIds.has(typeof l.target === 'object' ? l.target.id : l.target)
+        );
+    
+        // 3. Mémorisation (utilisé ailleurs)
+        this.visibleNodes = visibleNodes;
+        this.visibleLinks = visibleLinks;
+    
+        // 4. Simulation D3 (layout physique)
         const width = this.svg.node().getBoundingClientRect().width;
         const height = this.svg.node().getBoundingClientRect().height;
     
@@ -547,55 +589,10 @@ class RdfExplorer {
         };
     
         const sizeScale = d3.scaleLinear()
-            .domain(d3.extent(this.graph.nodes, sizeAccessor))
+            .domain(d3.extent(sourceNodes, sizeAccessor))
             .range([8, 30]);
     
-        let visibleNodes, visibleLinks;
-    
-        if (this.isSubgraphMode) {
-            visibleNodes = this.visibleNodes;
-            visibleLinks = this.visibleLinks;
-        } else {
-            const predicateFilteredLinks = this.graph.links.filter(l => this.activePredicates.has(l.predicate));
-    
-            const usedNodeIds = new Set();
-            predicateFilteredLinks.forEach(link => {
-                const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-                const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-                usedNodeIds.add(sourceId);
-                usedNodeIds.add(targetId);
-            });
-    
-            visibleNodes = this.graph.nodes.filter(n => {
-                const totalDegree = n.inDegree + n.outDegree;
-                const passesDegree = totalDegree >= this.minDegreeFilter;
-                const isConnected = !this.hideIsolatedNodes || usedNodeIds.has(n.id);
-                const isVisibleType = this.activeTypes ? this.activeTypes.has(n.type) : true;
-                return passesDegree && isConnected && isVisibleType;
-            });
-    
-            const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-            visibleLinks = predicateFilteredLinks.filter(l =>
-                visibleNodeIds.has(typeof l.source === 'object' ? l.source.id : l.source) &&
-                visibleNodeIds.has(typeof l.target === 'object' ? l.target.id : l.target)
-            );
-    
-            this.visibleNodes = visibleNodes;
-            this.visibleLinks = visibleLinks;
-        }
-    
-        // Correction de cas de sélection de nœud invalide
-        const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-        if (this.startNode && !visibleNodeIds.has(this.startNode.id)) {
-            this.startNode = null;
-            this.startNodeInput.value = '';
-        }
-        if (this.endNode && !visibleNodeIds.has(this.endNode.id)) {
-            this.endNode = null;
-            this.endNodeInput.value = '';
-        }
-    
-        // Simulation D3
+        // 5. Simulation physique (force layout)
         this.simulation = d3.forceSimulation(visibleNodes)
             .force('link', d3.forceLink(visibleLinks).id(d => d.id).distance(100))
             .force('charge', d3.forceManyBody().strength(this.gravityForce))
@@ -610,9 +607,11 @@ class RdfExplorer {
             if (pauseBtn) pauseBtn.textContent = '⏸️ Pause Simulation';
         }
     
+        // 6. Efface anciens éléments SVG
         this.svg.selectAll('.links > *').remove();
         this.svg.selectAll('.nodes > *').remove();
     
+        // 7. Affichage des liens
         const link = this.svg.select('.zoom-group .links')
             .selectAll('line')
             .data(visibleLinks)
@@ -621,6 +620,7 @@ class RdfExplorer {
             .attr('stroke-width', 2)
             .attr('stroke-opacity', 0.7);
     
+        // 8. Affichage des labels d’arêtes (option)
         if (this.showEdgeLabels) {
             this.svg.select('.zoom-group .links')
                 .selectAll('text')
@@ -633,6 +633,7 @@ class RdfExplorer {
                 .style('pointer-events', 'none');
         }
     
+        // 9. Affichage des noeuds
         const node = this.svg.select('.zoom-group .nodes')
             .selectAll('circle')
             .data(visibleNodes)
@@ -653,9 +654,9 @@ class RdfExplorer {
                 return 2;
             });
     
+        // 10. Labels de noeuds (option)
         const labelsGroup = this.svg.select('.zoom-group .nodes');
         labelsGroup.selectAll('text').remove();
-    
         if (this.showNodeLabels) {
             labelsGroup
                 .selectAll('text')
@@ -666,12 +667,14 @@ class RdfExplorer {
                 .attr('text-anchor', 'middle')
                 .attr('dy', '.35em')
                 .style('pointer-events', 'none')
-                .style('fill', 'white')
+                .style('fill', 'black')
                 .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.7)');
         }
     
+        // 11. Sélection de noeud à la souris
         node.on('click', (event, d) => this.selectNode(d));
     
+        // 12. Animation layout (simulation D3)
         this.simulation.on('tick', () => {
             link
                 .attr('x1', d => d.source.x)
@@ -696,7 +699,7 @@ class RdfExplorer {
             this.updateMiniMap(visibleNodes, visibleLinks);
         });
     
-        // Nettoyage des anciens chemins si besoin
+        // 13. Nettoyage chemins (si existants)
         if (this.allPaths.length > 0) {
             const allNodeIds = new Set(visibleNodes.map(n => n.id));
             const isPathStillValid = this.allPaths.some(path => path.every(id => allNodeIds.has(id)));
@@ -707,12 +710,15 @@ class RdfExplorer {
             }
         }
     
+        // 14. Overlay statistiques
         const overlay = document.getElementById('graphOverlay');
         overlay.innerHTML = `📊 Graphe: ${visibleNodes.length} nœuds • ${visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
     
+        // 15. Couleurs de noeuds et arêtes
         this.updateNodeColors();
         this.updateEdgeColors();
     }
+    
      
 
     selectNode(node) {
@@ -1639,6 +1645,7 @@ class RdfExplorer {
         const maxDepth = parseInt(document.getElementById('depthRange').value);
         const direction = this.exploreDirectionSelect.value;
     
+        // 1. On explore TOUT LE GRAPHE (pas de filtre) pour obtenir le sous-graphe brut
         const visited = new Set();
         const queue = [{ node: this.startNode, depth: 0 }];
         visited.add(this.startNode.id);
@@ -1647,7 +1654,8 @@ class RdfExplorer {
             const { node, depth } = queue.shift();
             if (depth >= maxDepth) continue;
     
-            this.visibleLinks.forEach(link => {
+            // Utilise bien this.graph.links pour ignorer les filtres
+            this.graph.links.forEach(link => {
                 const source = typeof link.source === 'object' ? link.source : this.graph.nodes.find(n => n.id === link.source);
                 const target = typeof link.target === 'object' ? link.target : this.graph.nodes.find(n => n.id === link.target);
     
@@ -1668,6 +1676,7 @@ class RdfExplorer {
             });
         }
     
+        // 2. On stocke le sous-graphe "pur" sans filtre dans deux propriétés
         const newVisibleNodeIds = visited;
         const newVisibleNodes = this.graph.nodes.filter(n => newVisibleNodeIds.has(n.id));
         const newVisibleLinks = this.graph.links.filter(l =>
@@ -1675,21 +1684,20 @@ class RdfExplorer {
             newVisibleNodeIds.has(typeof l.target === 'object' ? l.target.id : l.target)
         );
     
-        // Sauvegarde l'affichage complet
-        this.previousVisibleNodes = this.visibleNodes;
-        this.previousVisibleLinks = this.visibleLinks;
+        // Stockage du sous-graphe BRUT (pour pouvoir filtrer/défiltrer à l'affichage)
+        this.subgraphNodes = newVisibleNodes;
+        this.subgraphLinks = newVisibleLinks;
     
-        // Mise à jour du mode sous-graphe
-        this.visibleNodes = newVisibleNodes;
-        this.visibleLinks = newVisibleLinks;
+        // Active le mode sous-graphe
         this.isSubgraphMode = true;
     
+        // On déclenche le rendu qui appliquera les filtres d'affichage sur ce sous-graphe
         this.renderGraph();
     
-        // Changer le texte du bouton
+        // Met à jour le texte du bouton
         document.getElementById('SubGraphBtn').textContent = '🌳 Afficher le graphe entier';
-    }
-
+    }    
+    
     resetToFullGraph() {
         this.visibleNodes = this.previousVisibleNodes;
         this.visibleLinks = this.previousVisibleLinks;
