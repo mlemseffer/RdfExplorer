@@ -1066,14 +1066,20 @@ class RdfExplorer {
     }
     
     exportVisibleRDFandConfig() {
-        //Mode d'emploi : 
-            // Exporte les triplets visibles et la configuration courante
-
+        // 🔍 Préparation des IDs visibles (nœuds dans le graphe affiché)
         const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
-        const visibleTriples = this.graph.triples.filter(t =>
-            visibleNodeIds.has(t.subject) && visibleNodeIds.has(t.object)
-        );
-
+    
+        // ✅ Triplets à exporter : 
+        // - ceux dont le sujet ET l’objet sont visibles
+        // - ou ceux dont le prédicat est rdf:type (même si l’objet est hors sous-graphe)
+        const visibleTriples = this.graph.triples.filter(t => {
+            const isSubjectVisible = visibleNodeIds.has(t.subject);
+            const isObjectVisible = visibleNodeIds.has(t.object);
+            const isRDFType = t.predicate.includes('rdf-syntax-ns#type') || t.predicate.endsWith('#type');
+            return (isSubjectVisible && isObjectVisible) || (isSubjectVisible && isRDFType);
+        });
+    
+        // 📄 Génération du contenu Turtle (.ttl)
         let ttlContent = '';
         visibleTriples.forEach(t => {
             const subject = `<${t.subject}>`;
@@ -1081,7 +1087,8 @@ class RdfExplorer {
             const object = t.objectType === 'Literal' ? `"${t.object}"` : `<${t.object}>`;
             ttlContent += `${subject} ${predicate} ${object} .\n`;
         });
-
+    
+        // ⚙️ Génération du contenu Config (.json)
         const config = {
             activePredicates: Array.from(this.activePredicates),
             activeTypes: Array.from(this.activeTypes),
@@ -1092,9 +1099,10 @@ class RdfExplorer {
             showEdgeLabels: this.showEdgeLabels,
             simulationPaused: this.simulationPaused
         };
-
+    
         const configContent = JSON.stringify(config, null, 2);
-
+    
+        // 📤 Fonction de téléchargement
         const download = (filename, content, mimeType) => {
             const blob = new Blob([content], { type: mimeType });
             const url = URL.createObjectURL(blob);
@@ -1106,10 +1114,12 @@ class RdfExplorer {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         };
-
+    
+        // 🚀 Déclenche les téléchargements
         download("export.ttl", ttlContent, "text/turtle");
         download("config.json", configContent, "application/json");
     }
+    
 
     async loadConfigFile(file) {
         //Mode d'emploi
@@ -1153,15 +1163,15 @@ class RdfExplorer {
             this.renderGraph();
     
             // Appliquer l'état de pause
-            const toggleBtn = document.getElementById('toggleSimulationBtn');
+            const toggle = document.getElementById('toggleSimulationBtn');
             if (this.simulationPaused) {
                 // On stoppe explicitement sans relancer quoi que ce soit
                 this.simulation.stop();
-                if (pauseBtn) pauseBtn.textContent = '▶️ Reprendre Simulation';
+                if (toggle) toggle.textContent = '▶️ Reprendre Simulation';
             } else {
                 // Ne redémarrer que si nécessaire
                 this.simulation.alpha(0.3);
-                if (pauseBtn) pauseBtn.textContent = '⏸️ Pause Simulation';
+                if (toggle) toggle.textContent = '⏸️ Pause Simulation';
             }            
     
         } catch (e) {
@@ -1338,7 +1348,6 @@ class RdfExplorer {
                     const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
                     const targetId = typeof link.target === 'object' ? link.target.id : link.target;
     
-                    const sourceNode = this.nodeMap.get(srcId);
                     const targetNode = typeof link.target === 'object' ? link.target : this.nodeMap.get(targetId);
 
     
@@ -1428,8 +1437,10 @@ class RdfExplorer {
             });
 
         this.svg.selectAll('.zoom-group .links line')
-            .attr('stroke', '#9ca3af')
-            .attr('stroke-width', 2);
+        .attr('stroke-width', 2);
+        
+        this.updateEdgeColors(); 
+        
 
         // Réinitialise les chemins trouvés et masque les boutons
         this.allPaths = [];
@@ -1493,7 +1504,6 @@ class RdfExplorer {
         alert("Aucun chemin visible trouvé entre les deux nœuds.");
     }
     
-
 
     highlightPath(path) {
         //Mode d'emploi : 
