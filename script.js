@@ -48,6 +48,14 @@ class RdfExplorer {
         this.subgraphNodes = [];
         this.subgraphLinks = [];
 
+        //Optimisation
+
+        this.nodeMap = new Map();      // id => node
+        this.adjList = new Map();      // id => [voisins sortants]
+        this.revAdjList = new Map();   // id => [voisins entrants]
+        this.labelMap = new Map();
+
+
         this.init();
     }
 
@@ -313,59 +321,67 @@ class RdfExplorer {
     }
 
     buildGraphFromTriples(triples) {
-        //Mode d'emploi : 
-            // Construit les nœuds et liens à partir des triplets RDF
-
         const nodeMap = new Map();
         const links = [];
-
-        triples.forEach(triple => {
-            if (!nodeMap.has(triple.subject)) {
-                nodeMap.set(triple.subject, {
-                    id: triple.subject,
-                    label: this.extractLabel(triple.subject),
+        const adjList = new Map();
+        const revAdjList = new Map();
+    
+        for (const triple of triples) {
+            const { subject, predicate, object, objectType } = triple;
+    
+            if (!nodeMap.has(subject)) {
+                nodeMap.set(subject, {
+                    id: subject,
+                    label: this.extractLabel(subject),
                     type: 'unknown',
                     inDegree: 0,
                     outDegree: 0
                 });
             }
-
-            if (!nodeMap.has(triple.object)) {
-                const label = triple.objectType === 'Literal' ? triple.object : this.extractLabel(triple.object);
-                const type = triple.objectType === 'Literal' ? this.inferLiteralType(triple.predicate) : 'unknown';
-
-                nodeMap.set(triple.object, {
-                    id: triple.object,
-                    label: label,
-                    type: type,
+    
+            if (!nodeMap.has(object)) {
+                nodeMap.set(object, {
+                    id: object,
+                    label: objectType === 'Literal' ? object : this.extractLabel(object),
+                    type: objectType === 'Literal' ? this.inferLiteralType(predicate) : 'unknown',
                     inDegree: 0,
                     outDegree: 0
                 });
             }
-
+    
+            nodeMap.get(subject).outDegree++;
+            nodeMap.get(object).inDegree++;
+    
+            // Création du lien
             links.push({
-                source: triple.subject,
-                target: triple.object,
-                predicate: triple.predicate,
-                label: this.extractLabel(triple.predicate)
+                source: subject,
+                target: object,
+                predicate: predicate,
+                label: this.extractLabel(predicate)
             });
-
-            nodeMap.get(triple.subject).outDegree++;
-            nodeMap.get(triple.object).inDegree++;
-        });
-
-        triples.forEach(triple => {
-            if (triple.predicate.includes('type') || triple.predicate === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
-                if (nodeMap.has(triple.subject)) {
-                    nodeMap.get(triple.subject).type = this.categorizeType(triple.object);
+    
+            // Liste d’adjacence
+            if (!adjList.has(subject)) adjList.set(subject, []);
+            adjList.get(subject).push(object);
+    
+            if (!revAdjList.has(object)) revAdjList.set(object, []);
+            revAdjList.get(object).push(subject);
+        }
+    
+        // Déduction de type depuis les triplets
+        for (const triple of triples) {
+            const { subject, predicate, object } = triple;
+            if (predicate.includes('type') || predicate.endsWith('#type')) {
+                if (nodeMap.has(subject)) {
+                    nodeMap.get(subject).type = this.categorizeType(object);
                 }
             }
-            if (triple.predicate.toLowerCase().includes('topic')&&triple.predicate.toLowerCase().includes('has')) { //Specifique pour le graphe de cours
-                if (nodeMap.has(triple.object)) {
-                    nodeMap.get(triple.object).type = "topics";
+            if (predicate.toLowerCase().includes('topic') && predicate.toLowerCase().includes('has')) {
+                if (nodeMap.has(object)) {
+                    nodeMap.get(object).type = "topics";
                 }
             }
-        });
+        }
 
         nodeMap.forEach(node => {
             if (node.type === 'unknown' && (node.id.startsWith('http://') || node.id.startsWith('https://'))) {
@@ -380,11 +396,17 @@ class RdfExplorer {
                 }
             }
         });
-
+    
+        this.nodeMap = nodeMap;
+        this.adjList = adjList;
+        this.revAdjList = revAdjList;
         this.graph.nodes = Array.from(nodeMap.values());
         this.graph.links = links;
+        this.graph.nodes.forEach(n => this.labelMap.set(n.label, n));
+    
         this.updateDegreeSlider();
     }
+    
 
     extractActivePredicates() {
         //Mode d'emploi : 
@@ -833,6 +855,8 @@ class RdfExplorer {
             triples: []
         };
 
+        this.labelMap.clear();
+
         //On remet à 0 les prédicats actifs
         this.activePredicates = new Set();
 
@@ -1227,7 +1251,7 @@ class RdfExplorer {
     selectNodeFromInput(label, type = 'start') {
         //Mode d'emploi : 
             // Sélectionne un nœud via son nom saisi dans un champ texte
-        const node = this.graph.nodes.find(n => n.label === label);
+        const node = this.labelMap.get(label);
         if (node) {
             if (type === 'start') {
                 this.setStartNode(node);
@@ -1314,20 +1338,23 @@ class RdfExplorer {
                     const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
                     const targetId = typeof link.target === 'object' ? link.target.id : link.target;
     
-                    const sourceNode = typeof link.source === 'object' ? link.source : this.visibleNodes.find(n => n.id === sourceId);
-                    const targetNode = typeof link.target === 'object' ? link.target : this.visibleNodes.find(n => n.id === targetId);
+                    const sourceNode = this.nodeMap.get(srcId);
+                    const targetNode = typeof link.target === 'object' ? link.target : this.nodeMap.get(targetId);
+
     
                     const neighbors = [];
-    
-                    if ((direction === 'Entrantes' || direction === 'Entrantes + Sortantes') &&
-                        targetId === node.id && !visited.has(sourceId)) {
-                        neighbors.push(sourceNode);
+
+                    if ((direction === 'Entrantes' || direction === 'Entrantes + Sortantes') && this.revAdjList.has(node.id)) {
+                        for (const parent of this.revAdjList.get(node.id)) {
+                            if (!visited.has(parent)) neighbors.push(this.nodeMap.get(parent));
+                        }
                     }
-    
-                    if ((direction === 'Sortantes' || direction === 'Entrantes + Sortantes') &&
-                        sourceId === node.id && !visited.has(targetId)) {
-                        neighbors.push(targetNode);
+                    if ((direction === 'Sortantes' || direction === 'Entrantes + Sortantes') && this.adjList.has(node.id)) {
+                        for (const child of this.adjList.get(node.id)) {
+                            if (!visited.has(child)) neighbors.push(this.nodeMap.get(child));
+                        }
                     }
+
     
                     return neighbors;
                 });
@@ -1414,59 +1441,58 @@ class RdfExplorer {
     }
 
     findShortestPath() {
-        //Mode d'emploi : 
-            // Cherche et affiche le plus court chemin entre deux nœuds visibles
         if (!this.startNode || !this.endNode) {
             alert("Veuillez sélectionner à la fois un nœud de départ et d'arrivée.");
             return;
         }
-
-        const direction = this.exploreDirectionSelect.value; 
-        const graph = new Map();
+    
+        const direction = this.exploreDirectionSelect.value;
         const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
-
-        // Construire le graphe en fonction de la direction
-        for (const link of this.visibleLinks) {
-            const src = typeof link.source === 'object' ? link.source.id : link.source;
-            const tgt = typeof link.target === 'object' ? link.target.id : link.target;
-
-            if (direction === 'Entrantes + Sortantes') {
-                if (!graph.has(src)) graph.set(src, []);
-                graph.get(src).push(tgt);
-                if (!graph.has(tgt)) graph.set(tgt, []);
-                graph.get(tgt).push(src);
-            } else if (direction === 'Entrantes') {
-                if (!graph.has(tgt)) graph.set(tgt, []);
-                graph.get(tgt).push(src);
-            } else if (direction === 'Sortantes') {
-                if (!graph.has(src)) graph.set(src, []);
-                graph.get(src).push(tgt);
+    
+        // Construction dynamique du graphe filtré
+        const graph = new Map();
+    
+        for (const nodeId of visibleNodeIds) {
+            const neighbors = new Set();
+    
+            if ((direction === 'Sortantes' || direction === 'Entrantes + Sortantes') && this.adjList.has(nodeId)) {
+                for (const target of this.adjList.get(nodeId)) {
+                    if (visibleNodeIds.has(target)) neighbors.add(target);
+                }
             }
+    
+            if ((direction === 'Entrantes' || direction === 'Entrantes + Sortantes') && this.revAdjList.has(nodeId)) {
+                for (const source of this.revAdjList.get(nodeId)) {
+                    if (visibleNodeIds.has(source)) neighbors.add(source);
+                }
+            }
+    
+            graph.set(nodeId, Array.from(neighbors));
         }
-
+    
         const queue = [[this.startNode.id]];
         const visited = new Set();
-
+    
         while (queue.length > 0) {
             const path = queue.shift();
             const node = path[path.length - 1];
-
+    
             if (node === this.endNode.id) {
                 this.highlightPath(path);
                 return;
             }
-
+    
             if (!visited.has(node)) {
                 visited.add(node);
-                const neighbors = (graph.get(node) || []).filter(n => visibleNodeIds.has(n));
-                for (const neighbor of neighbors) {
+                for (const neighbor of graph.get(node) || []) {
                     queue.push([...path, neighbor]);
                 }
             }
         }
-
+    
         alert("Aucun chemin visible trouvé entre les deux nœuds.");
     }
+    
 
 
     highlightPath(path) {
@@ -1503,33 +1529,32 @@ class RdfExplorer {
     }
 
     findAllPaths() {
-        //Mode d'emploi : 
-            // Calcule tous les chemins entre deux nœuds visibles
         if (!this.startNode || !this.endNode) {
             alert("Veuillez sélectionner à la fois un nœud de départ et d'arrivée.");
             return;
         }
     
         const direction = this.exploreDirectionSelect.value;
-        const graph = new Map();
         const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
     
-        for (const link of this.visibleLinks) {
-            const src = typeof link.source === 'object' ? link.source.id : link.source;
-            const tgt = typeof link.target === 'object' ? link.target.id : link.target;
+        const graph = new Map();
     
-            if (direction === 'Entrantes + Sortantes') {
-                if (!graph.has(src)) graph.set(src, []);
-                graph.get(src).push(tgt);
-                if (!graph.has(tgt)) graph.set(tgt, []);
-                graph.get(tgt).push(src);
-            } else if (direction === 'Entrantes') {
-                if (!graph.has(tgt)) graph.set(tgt, []);
-                graph.get(tgt).push(src);
-            } else if (direction === 'Sortantes') {
-                if (!graph.has(src)) graph.set(src, []);
-                graph.get(src).push(tgt);
+        for (const nodeId of visibleNodeIds) {
+            const neighbors = new Set();
+    
+            if ((direction === 'Sortantes' || direction === 'Entrantes + Sortantes') && this.adjList.has(nodeId)) {
+                for (const target of this.adjList.get(nodeId)) {
+                    if (visibleNodeIds.has(target)) neighbors.add(target);
+                }
             }
+    
+            if ((direction === 'Entrantes' || direction === 'Entrantes + Sortantes') && this.revAdjList.has(nodeId)) {
+                for (const source of this.revAdjList.get(nodeId)) {
+                    if (visibleNodeIds.has(source)) neighbors.add(source);
+                }
+            }
+    
+            graph.set(nodeId, Array.from(neighbors));
         }
     
         const paths = [];
@@ -1553,7 +1578,7 @@ class RdfExplorer {
         } else {
             document.getElementById('pathNavigationControls').style.display = 'none';
         }
-    }
+    }    
             
 
     dfs(current, target, path, graph, visited, paths, maxDepth = 20) {
@@ -1656,8 +1681,9 @@ class RdfExplorer {
     
             // Utilise bien this.graph.links pour ignorer les filtres
             this.graph.links.forEach(link => {
-                const source = typeof link.source === 'object' ? link.source : this.graph.nodes.find(n => n.id === link.source);
-                const target = typeof link.target === 'object' ? link.target : this.graph.nodes.find(n => n.id === link.target);
+                const source = typeof link.source === 'object' ? link.source : this.nodeMap.get(link.source);
+                const target = typeof link.target === 'object' ? link.target : this.nodeMap.get(link.target);
+
     
                 if (!source || !target) return;
     
