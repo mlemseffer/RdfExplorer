@@ -109,14 +109,6 @@
 
 ---
 
-## 🧪 Limitations connues
-
-- Pas encore de **clustering automatique**
-- Pas de mesures de centralité ou autres indicateurs avancés
-- Un seul graphe chargé à la fois
-
----
-
 ## 📎 Exemple de fichier RDF (.ttl)
 
 ```ttl
