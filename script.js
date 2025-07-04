@@ -791,7 +791,6 @@ class RdfExplorer {
         this.updateSelectedNodeHighlight();
     }
 
-
     updateStatistics() {
         //Mode d'emploi :
         // Calcule et affiche les statistiques globales du graphe
@@ -1091,10 +1090,13 @@ class RdfExplorer {
     }
 
     exportVisibleRDFandConfig() {
-        // 🔍 Préparation des IDs visibles (nœuds dans le graphe affiché)
+        //Mode d'emploi :
+            //Méthode pour exporter le graph RDF actuellement visible
+        
+        // Préparation des IDs visibles (nœuds dans le graphe affiché)
         const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
 
-        // ✅ Triplets à exporter : 
+        // Triplets à exporter : 
         // - ceux dont le sujet ET l’objet sont visibles
         // - ou ceux dont le prédicat est rdf:type (même si l’objet est hors sous-graphe)
         const visibleTriples = this.graph.triples.filter(t => {
@@ -1104,7 +1106,7 @@ class RdfExplorer {
             return (isSubjectVisible && isObjectVisible) || (isSubjectVisible && isRDFType);
         });
 
-        // 📄 Génération du contenu Turtle (.ttl)
+        // Génération du contenu Turtle (.ttl)
         let ttlContent = '';
         visibleTriples.forEach(t => {
             const subject = `<${t.subject}>`;
@@ -1113,7 +1115,7 @@ class RdfExplorer {
             ttlContent += `${subject} ${predicate} ${object} .\n`;
         });
 
-        // ⚙️ Génération du contenu Config (.json)
+        // Génération du contenu Config (.json)
         const config = {
             activePredicates: Array.from(this.activePredicates),
             activeTypes: Array.from(this.activeTypes),
@@ -1127,7 +1129,7 @@ class RdfExplorer {
 
         const configContent = JSON.stringify(config, null, 2);
 
-        // 📤 Fonction de téléchargement
+        // Fonction de téléchargement
         const download = (filename, content, mimeType) => {
             const blob = new Blob([content], { type: mimeType });
             const url = URL.createObjectURL(blob);
@@ -1140,7 +1142,7 @@ class RdfExplorer {
             URL.revokeObjectURL(url);
         };
 
-        // 🚀 Déclenche les téléchargements
+        // Déclenche les téléchargements
         download("export.ttl", ttlContent, "text/turtle");
         download("config.json", configContent, "application/json");
     }
@@ -1286,6 +1288,7 @@ class RdfExplorer {
     selectNodeFromInput(label, type = 'start') {
         //Mode d'emploi : 
         // Sélectionne un nœud via son nom saisi dans un champ texte
+        
         const node = this.labelMap.get(label);
         if (node) {
             if (type === 'start') {
@@ -1351,6 +1354,9 @@ class RdfExplorer {
     }
 
     async exploreFromStartNode(maxDepth = 3, delay = 1000) {
+        //Mode d'emploi :
+            //Méthode pour lancer l'exploration en profondeur
+        
         // Vérifie que le nœud de départ est défini
         if (!this.startNode) {
             alert("Veuillez sélectionner un nœud de départ.");
@@ -1466,7 +1472,6 @@ class RdfExplorer {
 
         this.updateEdgeColors();
 
-
         // Réinitialise les chemins trouvés et masque les boutons
         this.allPaths = [];
         this.currentPathIndex = 0;
@@ -1477,6 +1482,9 @@ class RdfExplorer {
     }
 
     findShortestPath() {
+        //Mode d'emploi
+            //Methode pour trouver le chemin le plus court entre deux noeuds
+        
         if (!this.startNode || !this.endNode) {
             alert("Veuillez sélectionner à la fois un nœud de départ et d'arrivée.");
             return;
@@ -1532,7 +1540,7 @@ class RdfExplorer {
 
     highlightPath(path) {
         //Mode d'emploi : 
-        // Affiche les nœuds du chemin en bleu foncé
+            // Affiche les nœuds du chemin en bleu foncé
 
         this.svg.selectAll('.nodes circle')
             .attr('stroke', d => {
@@ -1564,6 +1572,9 @@ class RdfExplorer {
     }
 
     findAllPaths() {
+        //Mode d'emploi
+            //Methode pour trouver tous les chemins entre deux noeuds
+        
         if (!this.startNode || !this.endNode) {
             alert("Veuillez sélectionner à la fois un nœud de départ et d'arrivée.");
             return;
@@ -1662,7 +1673,7 @@ class RdfExplorer {
 
     updateNodeColors() {
         //Mode d'emploi : 
-        // Applique la couleur aux nœuds selon l’échelle active
+            // Applique la couleur aux nœuds selon l’échelle active
 
         const colorScale = this.getColorScale();
         this.svg.selectAll('.nodes circle')
@@ -1697,6 +1708,9 @@ class RdfExplorer {
     }
 
     showSubgraph() {
+        //Mode d'emploi : 
+            //Methode pour afficher un sous graphe à partir du noeud de départ et de la profondeur selectionnée
+        
         if (!this.startNode) {
             alert("Veuillez sélectionner un nœud de départ.");
             return;
@@ -1760,6 +1774,9 @@ class RdfExplorer {
     }
 
     resetToFullGraph() {
+        //Mode d'emploi :
+            //Méthode pour passer du sous graphe au graphe entier 
+        
         this.visibleNodes = this.previousVisibleNodes;
         this.visibleLinks = this.previousVisibleLinks;
         this.isSubgraphMode = false;
@@ -1769,6 +1786,9 @@ class RdfExplorer {
     }
 
     updateEdgeColors() {
+        //Mode d'emploi :
+            //Methode pour mettre à jour la couleur des arêtes selon le mode selectionné
+        
         const linkSelection = this.svg.selectAll('.zoom-group .links line');
 
         if (this.edgeColorMode === 'predicate') {
@@ -1795,6 +1815,9 @@ class RdfExplorer {
     }
 
     updateEdgeColorLegend(scale) {
+        //Mode d'emploi :
+            //Methode pour mettre à jour la légende concernant la couleur des arêtes selon le mode selectionné
+        
         const legendContainer = document.getElementById('colorEdgeLegend');
         legendContainer.innerHTML = '';
 
@@ -1813,6 +1836,9 @@ class RdfExplorer {
     }
 
     hideCurrentlyIsolatedNodes() {
+        //Mode d'emploi :
+            //Methode pour ne plus afficher les noeuds n'ayant aucune arête visible
+        
         const isolatedIds = new Set();
 
         this.visibleNodes.forEach(n => {
@@ -1841,9 +1867,10 @@ class RdfExplorer {
         overlay.innerHTML = `📊 Graphe: ${newCount} nœuds • ${this.visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
     }
 
-
-    // Appelle un endpoint SPARQL distant
     async runSparqlRequest(query) {
+        //Mode d'emploi :
+            //Méthode pour lancer la requête SPARQL saisie par l'utilisateur
+        
         const endpointUrl = "https://dbpedia.org/sparql";
         const fullUrl = endpointUrl + "?query=" + encodeURIComponent(query);
     
@@ -1863,8 +1890,10 @@ class RdfExplorer {
     }
     
 
-    // Transforme les résultats SPARQL en triplets RDF
     convertSparqlResultsToTriples(results) {
+        //Mode d'emploi :
+            //Méthode pour convertir les données SPARQL en triplets pour les afficher
+        
         const triples = [];
 
         for (const binding of results.results.bindings) {
