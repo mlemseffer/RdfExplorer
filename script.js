@@ -1,6 +1,6 @@
 class RdfExplorer {
+    //Constructeur par defaut de l'application
     constructor() {
-        //Regarder ldViz
         this.graph = {
             nodes: [],
             links: [],
@@ -40,6 +40,7 @@ class RdfExplorer {
         //Pause
         this.simulationPaused = false;
 
+        //Affichage du sous graphe
         this.isSubgraphMode = false;
         this.previousVisibleNodes = [];
         this.previousVisibleLinks = [];
@@ -49,12 +50,12 @@ class RdfExplorer {
 
         //Optimisation
 
-        this.nodeMap = new Map();      // id => node
-        this.adjList = new Map();      // id => [voisins sortants]
-        this.revAdjList = new Map();   // id => [voisins entrants]
+        this.nodeMap = new Map();   
+        this.adjList = new Map();      
+        this.revAdjList = new Map();  
         this.labelMap = new Map();
 
-
+        //Demarrage de l'application
         this.init();
     }
 
