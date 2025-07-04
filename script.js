@@ -305,7 +305,7 @@ class RdfExplorer {
         // Charge un fichier RDF (.ttl), l’analyse et construit le graphe. Si un graphe était deja présent, on le supprime
 
         try {
-            this.deleteGraph();
+            this.deleteGraph(); //On supprime le graphe deja présent dans le cas où on avait deja un graphe
             const content = await this.readFileContent(file);
             const triples = await this.parseWithN3(content);
             this.graph.triples = triples;
