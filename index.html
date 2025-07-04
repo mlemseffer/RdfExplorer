@@ -44,6 +44,10 @@
                     <div class="form-group"> <!--//TODO : Extraire les rdf:type-->
                         <label>Types RDF des noeuds</label>
                         <div class="checkbox-group" id="rdfTypesCheckboxes"></div>
+                        <div class="checkbox-item">
+                            <input type="checkbox" id="hideIsolatedNodes">
+                            <label for="hideIsolatedNodes">Masquer les nœuds isolés</label>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -65,8 +69,6 @@
                 <div class="panel-header">🔗 Prédicats actifs</div> <!-- //TODO : Extraire les prédicats-->
                 <div class="panel-content" id="predicatePanelContent">
                     <div class="checkbox-group" id="predicateCheckboxes">
-                        <input type="checkbox" id="hideIsolatedNodes">
-                        <label for="hideIsolatedNodes">Masquer les nœuds isolés</label>
                     </div>
                 </div>
             </div>
