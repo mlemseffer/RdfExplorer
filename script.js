@@ -263,6 +263,36 @@ class RdfExplorer {
             this.updateEdgeColors(); // appliquer sans relancer tout renderGraph
         });
 
+        document.getElementById('runSparqlBtn').addEventListener('click', async () => {
+            const query = document.getElementById('sparqlQueryInput').value;
+            if (!query.trim()) {
+                alert("Veuillez saisir une requête SPARQL.");
+                return;
+            }
+        
+            try {
+                const results = await this.runSparqlRequest(query);
+                const triples = this.convertSparqlResultsToTriples(results);
+        
+                if (triples.length === 0) {
+                    alert("Aucun triplet retourné.");
+                    return;
+                }
+        
+                this.deleteGraph(); // Nettoie l’ancien graphe
+                this.graph.triples = triples;
+                this.buildGraphFromTriples(triples);
+                this.extractActivePredicates();
+                this.extractActiveTypes();
+                this.updateStatistics();
+                this.renderGraph();
+        
+            } catch (e) {
+                alert("Erreur lors de l'exécution SPARQL : " + e.message);
+                console.error(e);
+            }
+        });        
+
     }
 
     async loadRDFFile(file) {
@@ -1798,6 +1828,51 @@ class RdfExplorer {
         const newCount = this.visibleNodes.length - isolatedIds.size;
         const overlay = document.getElementById('graphOverlay');
         overlay.innerHTML = `📊 Graphe: ${newCount} nœuds • ${this.visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
+    }
+
+
+    // Appelle un endpoint SPARQL distant
+    async runSparqlRequest(query) {
+        const endpointUrl = "https://dbpedia.org/sparql";
+        const fullUrl = endpointUrl + "?query=" + encodeURIComponent(query);
+    
+        const response = await fetch(fullUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'application/sparql-results+json'
+            }
+        });
+    
+        if (!response.ok) {
+            const text = await response.text();
+            throw new Error(`Erreur SPARQL ${response.status} :\n${text}`);
+        }
+    
+        return await response.json();
+    }
+    
+
+    // Transforme les résultats SPARQL en triplets RDF
+    convertSparqlResultsToTriples(results) {
+        const triples = [];
+
+        for (const binding of results.results.bindings) {
+            const s = binding.s?.value;
+            const p = binding.p?.value;
+            const o = binding.o?.value;
+            const oType = binding.o?.type;
+
+            if (s && p && o) {
+                triples.push({
+                    subject: s,
+                    predicate: p,
+                    object: o,
+                    objectType: oType === "literal" ? "Literal" : "NamedNode"
+                });
+            }
+        }
+
+        return triples;
     }
 
 
