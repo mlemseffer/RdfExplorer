@@ -249,6 +249,7 @@ class RdfExplorer {
             this.toggleSimulation();
         });
 
+        //Bouton pour afficher le sous graphe
         document.getElementById('SubGraphBtn').addEventListener('click', () => {
             if (this.isSubgraphMode) {
                 this.resetToFullGraph();
@@ -257,13 +258,15 @@ class RdfExplorer {
             }
         });
 
+        //Choix de la coloration des arêtes
         const edgeColorSelect = document.getElementById('edgeColorModeSelect');
         edgeColorSelect.addEventListener('change', (e) => {
             const value = e.target.value;
             this.edgeColorMode = value.includes('prédicats') ? 'predicate' : 'none';
             this.updateEdgeColors(); // appliquer sans relancer tout renderGraph
         });
-
+        
+        //Bouton pour lancer la requête SPARQL saisie
         document.getElementById('runSparqlBtn').addEventListener('click', async () => {
             const query = document.getElementById('sparqlQueryInput').value;
             if (!query.trim()) {
@@ -279,8 +282,9 @@ class RdfExplorer {
                     alert("Aucun triplet retourné.");
                     return;
                 }
-        
-                this.deleteGraph(); // Nettoie l’ancien graphe
+
+                //Nous souhaitons afficher le graphe obtenu avec notre requête SPARQL
+                this.deleteGraph();
                 this.graph.triples = triples;
                 this.buildGraphFromTriples(triples);
                 this.extractActivePredicates();
@@ -298,7 +302,7 @@ class RdfExplorer {
 
     async loadRDFFile(file) {
         //Mode d'emploi : 
-        // Charge un fichier RDF (.ttl), l’analyse et construit le graphe
+        // Charge un fichier RDF (.ttl), l’analyse et construit le graphe. Si un graphe était deja présent, on le supprime
 
         try {
             this.deleteGraph();
@@ -356,6 +360,8 @@ class RdfExplorer {
     }
 
     buildGraphFromTriples(triples) {
+        //Mode d'emploi
+            //A partir d'une liste de triplets spo, le graphe est construit
         const nodeMap = new Map();
         const links = [];
         const adjList = new Map();
@@ -466,6 +472,7 @@ class RdfExplorer {
             `;
             group.appendChild(div);
 
+            // Écouteur : ajouter/supprimer dynamiquement
             div.querySelector('input').addEventListener('change', (e) => {
                 if (e.target.checked) {
                     this.activePredicates.add(pred);
@@ -578,6 +585,9 @@ class RdfExplorer {
     }
 
     renderGraph() {
+        //Mode d'emploi :
+            //Méthode centrale de la classe, met en place l'animation du graphe
+        
         if (!this.svg) return;
 
         // 1. Source de données selon le mode (entier ou sous-graphe)
