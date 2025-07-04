@@ -242,3 +242,8 @@ body {
     border-radius: 2px;
     margin-right: 5px;
 }
+
+#sparqlQueryInput {
+    height: 150px; /* ou toute autre valeur souhaitée */
+    resize: vertical; /* permet à l’utilisateur d’agrandir manuellement si souhaité */
+}
