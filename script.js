@@ -133,8 +133,13 @@ class RdfExplorer {
         //Bouton pour cacher les noeuds isolés
         document.getElementById('hideIsolatedNodes').addEventListener('change', (e) => {
             this.hideIsolatedNodes = e.target.checked;
-            this.renderGraph(); 
+            if (this.hideIsolatedNodes) {
+                this.hideCurrentlyIsolatedNodes();
+            } else {
+                this.renderGraph(); // remise à jour complète
+            }
         });
+        
 
         //Mise à jour dynamique du filtre de degré
         const rangeInput = document.getElementById('degreeRangeInput');
@@ -1766,6 +1771,36 @@ class RdfExplorer {
             legendContainer.appendChild(item);
         });
     }    
+
+    hideCurrentlyIsolatedNodes() {
+        const isolatedIds = new Set();
+    
+        this.visibleNodes.forEach(n => {
+            const hasLink = this.visibleLinks.some(l =>
+                (typeof l.source === 'object' ? l.source.id : l.source) === n.id ||
+                (typeof l.target === 'object' ? l.target.id : l.target) === n.id
+            );
+            if (!hasLink) isolatedIds.add(n.id);
+        });
+    
+        // Masquer les cercles
+        this.svg.selectAll('.nodes circle')
+            .filter(d => isolatedIds.has(d.id))
+            .attr('visibility', 'hidden');
+    
+        // Masquer les labels de nœuds s'ils sont activés
+        if (this.showNodeLabels) {
+            this.svg.selectAll('.nodes text')
+                .filter(d => isolatedIds.has(d.id))
+                .attr('visibility', 'hidden');
+        }
+    
+        // Facultatif : mise à jour du compteur en haut à gauche
+        const newCount = this.visibleNodes.length - isolatedIds.size;
+        const overlay = document.getElementById('graphOverlay');
+        overlay.innerHTML = `📊 Graphe: ${newCount} nœuds • ${this.visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
+    }
+    
 
 }
 
