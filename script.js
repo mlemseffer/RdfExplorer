@@ -1824,7 +1824,7 @@ class RdfExplorer {
                 .attr('visibility', 'hidden');
         }
 
-        // Facultatif : mise à jour du compteur en haut à gauche
+         //mise à jour du compteur en haut à gauche
         const newCount = this.visibleNodes.length - isolatedIds.size;
         const overlay = document.getElementById('graphOverlay');
         overlay.innerHTML = `📊 Graphe: ${newCount} nœuds • ${this.visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
