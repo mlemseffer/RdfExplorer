@@ -440,22 +440,6 @@ class RdfExplorer {
                 this.renderGraph(); // Refresh graph with filter
             });
         });
-
-        // Ajout de la checkbox pour masquer les nœuds isolés
-        const hideId = 'hideIsolatedNodes';
-        const hideDiv = document.createElement('div');
-        hideDiv.classList.add('checkbox-item');
-        hideDiv.innerHTML = `
-            <input type="checkbox" id="${hideId}">
-            <label for="${hideId}">Masquer les nœuds isolés</label>
-        `;
-        group.appendChild(hideDiv);
-
-        document.getElementById(hideId).addEventListener('change', (e) => {
-            this.hideIsolatedNodes = e.target.checked;
-            this.renderGraph();
-        });
-
     }
 
     extractActiveTypes() {
@@ -571,36 +555,46 @@ class RdfExplorer {
             sourceLinks = this.graph.links;
         }
     
-        // 2. Application des filtres de la sidebar
+        // 2. Application des filtres de prédicats
         const predicateFilteredLinks = sourceLinks.filter(l => this.activePredicates.has(l.predicate));
     
-        const usedNodeIds = new Set();
-        predicateFilteredLinks.forEach(link => {
-            const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-            const targetId = typeof link.target === 'object' ? link.target.id : link.target;
-            usedNodeIds.add(sourceId);
-            usedNodeIds.add(targetId);
-        });
-    
-        const visibleNodes = sourceNodes.filter(n => {
+        // 3. Première passe : nœuds qui respectent type + degré
+        const nodeCandidates = sourceNodes.filter(n => {
             const totalDegree = n.inDegree + n.outDegree;
             const passesDegree = totalDegree >= this.minDegreeFilter;
-            const isConnected = !this.hideIsolatedNodes || usedNodeIds.has(n.id);
             const isVisibleType = this.activeTypes ? this.activeTypes.has(n.type) : true;
-            return passesDegree && isConnected && isVisibleType;
+            return passesDegree && isVisibleType;
+        });
+    
+        const candidateNodeIds = new Set(nodeCandidates.map(n => n.id));
+    
+        // 4. Filtres finaux des arêtes entre nœuds candidats
+        const visibleLinks = predicateFilteredLinks.filter(l => {
+            const src = typeof l.source === 'object' ? l.source.id : l.source;
+            const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+            return candidateNodeIds.has(src) && candidateNodeIds.has(tgt);
+        });
+    
+        // 5. Ensemble des nœuds effectivement connectés à une arête visible
+        const usedNodeIds = new Set();
+        visibleLinks.forEach(link => {
+            const src = typeof link.source === 'object' ? link.source.id : link.source;
+            const tgt = typeof link.target === 'object' ? link.target.id : link.target;
+            usedNodeIds.add(src);
+            usedNodeIds.add(tgt);
+        });
+    
+        // 6. Filtrage final : masquer les nœuds isolés (non connectés à une arête visible)
+        const visibleNodes = nodeCandidates.filter(n => {
+            return !this.hideIsolatedNodes || usedNodeIds.has(n.id);
         });
     
         const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-        const visibleLinks = predicateFilteredLinks.filter(l =>
-            visibleNodeIds.has(typeof l.source === 'object' ? l.source.id : l.source) &&
-            visibleNodeIds.has(typeof l.target === 'object' ? l.target.id : l.target)
-        );
     
-        // 3. Mémorisation (utilisé ailleurs)
+        // 7. Simulation D3 et rendu
         this.visibleNodes = visibleNodes;
         this.visibleLinks = visibleLinks;
     
-        // 4. Simulation D3 (layout physique)
         const width = this.svg.node().getBoundingClientRect().width;
         const height = this.svg.node().getBoundingClientRect().height;
     
@@ -614,7 +608,6 @@ class RdfExplorer {
             .domain(d3.extent(sourceNodes, sizeAccessor))
             .range([8, 30]);
     
-        // 5. Simulation physique (force layout)
         this.simulation = d3.forceSimulation(visibleNodes)
             .force('link', d3.forceLink(visibleLinks).id(d => d.id).distance(100))
             .force('charge', d3.forceManyBody().strength(this.gravityForce))
@@ -629,11 +622,11 @@ class RdfExplorer {
             if (pauseBtn) pauseBtn.textContent = '⏸️ Pause Simulation';
         }
     
-        // 6. Efface anciens éléments SVG
+        // Efface anciens éléments SVG
         this.svg.selectAll('.links > *').remove();
         this.svg.selectAll('.nodes > *').remove();
     
-        // 7. Affichage des liens
+        // Liens
         const link = this.svg.select('.zoom-group .links')
             .selectAll('line')
             .data(visibleLinks)
@@ -642,7 +635,7 @@ class RdfExplorer {
             .attr('stroke-width', 2)
             .attr('stroke-opacity', 0.7);
     
-        // 8. Affichage des labels d’arêtes (option)
+        // Labels d’arêtes (option)
         if (this.showEdgeLabels) {
             this.svg.select('.zoom-group .links')
                 .selectAll('text')
@@ -655,7 +648,7 @@ class RdfExplorer {
                 .style('pointer-events', 'none');
         }
     
-        // 9. Affichage des noeuds
+        // Nœuds
         const node = this.svg.select('.zoom-group .nodes')
             .selectAll('circle')
             .data(visibleNodes)
@@ -676,7 +669,7 @@ class RdfExplorer {
                 return 2;
             });
     
-        // 10. Labels de noeuds (option)
+        // Labels de nœuds (option)
         const labelsGroup = this.svg.select('.zoom-group .nodes');
         labelsGroup.selectAll('text').remove();
         if (this.showNodeLabels) {
@@ -693,10 +686,10 @@ class RdfExplorer {
                 .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.7)');
         }
     
-        // 11. Sélection de noeud à la souris
+        // Clic sur nœud
         node.on('click', (event, d) => this.selectNode(d));
     
-        // 12. Animation layout (simulation D3)
+        // Tick simulation
         this.simulation.on('tick', () => {
             link
                 .attr('x1', d => d.source.x)
@@ -721,27 +714,14 @@ class RdfExplorer {
             this.updateMiniMap(visibleNodes, visibleLinks);
         });
     
-        // 13. Nettoyage chemins (si existants)
-        if (this.allPaths.length > 0) {
-            const allNodeIds = new Set(visibleNodes.map(n => n.id));
-            const isPathStillValid = this.allPaths.some(path => path.every(id => allNodeIds.has(id)));
-            if (!isPathStillValid) {
-                this.allPaths = [];
-                this.currentPathIndex = 0;
-                document.getElementById('pathNavigationControls').style.display = 'none';
-            }
-        }
-    
-        // 14. Overlay statistiques
+        // Mise à jour statistiques et légendes
         const overlay = document.getElementById('graphOverlay');
         overlay.innerHTML = `📊 Graphe: ${visibleNodes.length} nœuds • ${visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
     
-        // 15. Couleurs de noeuds et arêtes
         this.updateNodeColors();
         this.updateEdgeColors();
     }
     
-     
 
     selectNode(node) {
         //Mode d'emploi : 
