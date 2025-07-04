@@ -3,7 +3,7 @@
 ## 📌 Introduction
 
 **RdfExplorer** est une application web interactive qui permet de visualiser, explorer et analyser des graphes RDF issus de fichiers `.ttl` (Turtle). Elle utilise les bibliothèques **N3.js** pour le parsing RDF et **D3.js** pour la visualisation dynamique.
-
+​🆘​​🆘​​🆘​ **L'application est encore en cours de développement**
 ---
 
 ## ⚙️ Prérequis techniques
@@ -86,6 +86,13 @@
 - Nœuds isolés
 - Répartition par type RDF
 - Légendes dynamiques de couleur pour les nœuds et arêtes
+
+---
+
+## 📝 Requête SPARQL
+
+- Ecris une requête SPARQL (pour l'instant, seul le endpoint dbpedia est supporté
+- Lance la requête et observe le graphe obtenu
 
 ---
 
