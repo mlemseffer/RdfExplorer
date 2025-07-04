@@ -1,6 +1,5 @@
 class RdfExplorer {
     constructor() {
-        //Regler le pb des unknown
         //Regarder ldViz
         this.graph = {
             nodes: [],
