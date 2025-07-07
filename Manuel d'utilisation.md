@@ -2,9 +2,10 @@
 
 ## 📌 Introduction
 
-**RdfExplorer** est une application web interactive qui permet de visualiser, explorer et analyser des graphes RDF issus de fichiers `.ttl` (Turtle). Elle utilise les bibliothèques **N3.js** pour le parsing RDF, **D3.js** pour la visualisation dynamique et **sparql.js** pour le moteur de recherche.
+**RdfExplorer** est une application web interactive qui permet de visualiser, explorer et analyser des graphes RDF issus de fichiers `.ttl` (Turtle). Elle utilise les bibliothèques **N3.js** pour le parsing RDF, **D3.js** pour la visualisation dynamique, et **sparql.js** pour le requêtage SPARQL.
 
-​🆘​​🆘​​🆘​ **L'application est encore en cours de développement**
+> ⚠️ **L'application est encore en cours de développement**
+
 ---
 
 ## ⚙️ Prérequis techniques
@@ -19,7 +20,7 @@
 
 1. Clique sur **📁 Importer RDF** dans la barre supérieure.
 2. Sélectionne un fichier `.ttl` depuis ton ordinateur.
-3. Les triplets RDF sont analysés et affichés en graphe.
+3. Les triplets RDF sont analysés et affichés sous forme de graphe interactif.
 
 > ℹ️ En cas d’erreur : vérifier la syntaxe du fichier (triplets bien formés).
 
@@ -32,7 +33,7 @@
 | **Barre supérieure** | Import/export de RDF/JSON/SVG, contrôle de la simulation |
 | **Sidebar gauche** | Filtres (type, degré, prédicats), options d’affichage |
 | **Zone principale** | Visualisation interactive du graphe |
-| **Barre droite** | Statistiques, style graphique, mini-map, infos sur les nœuds |
+| **Barre droite** | Statistiques, style graphique, mini-map, infos sur les nœuds, requêtes SPARQL |
 
 ---
 
@@ -46,9 +47,9 @@
   - Nœuds
   - Arêtes
 - **Apparence** :
-  - Taille des nœuds : degré entrant/sortant/total
-  - Couleur des nœuds : type ou degré
-  - Couleur des arêtes : par prédicat ou non
+  - Taille des nœuds : degré entrant / sortant / total
+  - Couleur des nœuds : par type ou degré
+  - Couleur des arêtes : par prédicat ou neutre
 
 ---
 
@@ -74,52 +75,92 @@
 
 ## 🌳 Sous-graphe
 
-- Clique sur **🕸️ Afficher le sous graphe** pour afficher uniquement les nœuds accessibles depuis le nœud de départ.
-- Revenir au graphe complet via **🌳 Afficher le graphe entier**
+- Clique sur **🕸️ Afficher le sous graphe** pour explorer les voisins du nœud de départ jusqu’à une certaine profondeur
+- Reviens au graphe complet via **🌳 Afficher le graphe entier**
 
 ---
 
 ## 📊 Statistiques et légendes
 
-- Nombre de triplets
-- Nombre de nœuds uniques
+- Triplets totaux
+- Nœuds uniques
 - Prédicats uniques
 - Nœuds isolés
 - Répartition par type RDF
-- Légendes dynamiques de couleur pour les nœuds et arêtes
+- Légendes dynamiques :
+  - Couleur des nœuds selon type ou degré
+  - Couleur des arêtes selon prédicat
 
 ---
 
 ## 📝 Requête SPARQL
 
-- Ecris une requête SPARQL (pour l'instant, seul le endpoint dbpedia est supporté
-- Lance la requête et observe le graphe obtenu
+### 📌 Objectif
+Exécuter des requêtes SPARQL dynamiques sur un endpoint distant ou local.
+
+### 🔧 Définir le endpoint SPARQL
+
+Un champ dédié permet de spécifier une **URL de serveur SPARQL**.  
+> 💡 Par défaut, le champ est pré-rempli avec :  
+> `http://localhost:3030/rdfexplorer/sparql`
+
+Cela permet d’utiliser un **serveur Fuseki local** si vous avez chargé vos données RDF dans un dataset nommé `rdfexplorer`.
+
+### 🧪 Exemple de requête
+
+\`\`\`sparql
+SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100
+\`\`\`
+
+Cliquez sur **▶️ Exécuter** pour interroger le graphe. Le graphe est reconstruit à partir des triplets retournés.
 
 ---
 
 ## 💾 Export / Sauvegarde
 
-- **📤 Exporter SVG** : exporte une image statique du graphe
+- **📤 Exporter SVG** : image du graphe
 - **📤 Exporter (RDF+Config)** :
-  - `.ttl` contenant uniquement les triplets visibles
-  - `.json` avec les paramètres d'affichage actuels
+  - `.ttl` : les triplets visibles
+  - `.json` : configuration actuelle (affichage, filtres)
 
-### ✅ Rechargement
-- Clique sur **📁 Importer Configuration (JSON)** pour recharger une sauvegarde précédente
+### ✅ Rechargement de configuration
+
+- Cliquez sur **📁 Importer Configuration (JSON)** pour restaurer un état précédent
 
 ---
 
 ## 💡 Conseils d’utilisation
 
-- **Mettre en pause la simulation** pour déplacer les nœuds manuellement
-- **Réduire le zoom** ou masquer les labels pour les grands graphes
-- **Utiliser les sliders** pour affiner la lisibilité
+- **Pause simulation** pour déplacer manuellement les nœuds
+- **Réduire le zoom** ou masquer les labels sur les grands graphes
+- **Filtrer par degré ou type** pour clarifier les vues
+
+---
+
+## 🔗 Connexion à Apache Jena Fuseki (optionnel)
+
+### 📦 Prérequis :
+- [Java 11 ou 17](https://adoptium.net)
+- [Fuseki 5.4.0](https://jena.apache.org/download/)
+
+### 🚀 Étapes :
+
+1. Lancer Fuseki :
+   \`\`\`bash
+   fuseki-server.bat
+   \`\`\`
+2. Créer un dataset nommé `rdfexplorer` dans l’interface web
+3. Importer votre fichier `.ttl` dans le **graphe par défaut**
+4. Utiliser comme endpoint dans RdfExplorer :
+   \`\`\`
+   http://localhost:3030/rdfexplorer/sparql
+   \`\`\`
 
 ---
 
 ## 📎 Exemple de fichier RDF (.ttl)
 
-```ttl
+\`\`\`ttl
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
 <http://example.org/person#Alice> a foaf:Person ;
@@ -128,3 +169,4 @@
 
 <http://example.org/person#Bob> a foaf:Person ;
     foaf:name "Bob" .
+\`\`\`
