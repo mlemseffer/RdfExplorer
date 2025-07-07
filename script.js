@@ -1868,10 +1868,9 @@ class RdfExplorer {
     }
 
     async runSparqlRequest(query) {
-        //Mode d'emploi :
-            //Méthode pour lancer la requête SPARQL saisie par l'utilisateur
-        
-        const endpointUrl = "https://dbpedia.org/sparql";
+        const endpointInput = document.getElementById('endpointInput');
+        const endpointUrl = endpointInput?.value?.trim() || "http://localhost:3030/rdfexplorer/sparql";
+    
         const fullUrl = endpointUrl + "?query=" + encodeURIComponent(query);
     
         const response = await fetch(fullUrl, {
@@ -1888,6 +1887,7 @@ class RdfExplorer {
     
         return await response.json();
     }
+    
     
 
     convertSparqlResultsToTriples(results) {
