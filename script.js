@@ -50,9 +50,9 @@ class RdfExplorer {
 
         //Optimisation
 
-        this.nodeMap = new Map();   
-        this.adjList = new Map();      
-        this.revAdjList = new Map();  
+        this.nodeMap = new Map();
+        this.adjList = new Map();
+        this.revAdjList = new Map();
         this.labelMap = new Map();
 
         //Demarrage de l'application
@@ -265,7 +265,7 @@ class RdfExplorer {
             this.edgeColorMode = value.includes('prédicats') ? 'predicate' : 'none';
             this.updateEdgeColors(); // appliquer sans relancer tout renderGraph
         });
-        
+
         //Bouton pour lancer la requête SPARQL saisie
         document.getElementById('runSparqlBtn').addEventListener('click', async () => {
             const query = document.getElementById('sparqlQueryInput').value;
@@ -273,11 +273,11 @@ class RdfExplorer {
                 alert("Veuillez saisir une requête SPARQL.");
                 return;
             }
-        
+
             try {
                 const results = await this.runSparqlRequest(query);
                 const triples = this.convertSparqlResultsToTriples(results);
-        
+
                 if (triples.length === 0) {
                     alert("Aucun triplet retourné.");
                     return;
@@ -291,12 +291,12 @@ class RdfExplorer {
                 this.extractActiveTypes();
                 this.updateStatistics();
                 this.renderGraph();
-        
+
             } catch (e) {
                 alert("Erreur lors de l'exécution SPARQL : " + e.message);
                 console.error(e);
             }
-        });        
+        });
 
     }
 
@@ -361,7 +361,7 @@ class RdfExplorer {
 
     buildGraphFromTriples(triples) {
         //Mode d'emploi
-            //A partir d'une liste de triplets spo, le graphe est construit
+        //A partir d'une liste de triplets spo, le graphe est construit
         const nodeMap = new Map();
         const links = [];
         const adjList = new Map();
@@ -586,8 +586,8 @@ class RdfExplorer {
 
     renderGraph() {
         //Mode d'emploi :
-            //Méthode centrale de la classe, met en place l'animation du graphe
-        
+        //Méthode centrale de la classe, met en place l'animation du graphe
+
         if (!this.svg) return;
 
         // 1. Source de données selon le mode (entier ou sous-graphe)
@@ -1091,8 +1091,8 @@ class RdfExplorer {
 
     exportVisibleRDFandConfig() {
         //Mode d'emploi :
-            //Méthode pour exporter le graph RDF actuellement visible
-        
+        //Méthode pour exporter le graph RDF actuellement visible
+
         // Préparation des IDs visibles (nœuds dans le graphe affiché)
         const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
 
@@ -1288,7 +1288,7 @@ class RdfExplorer {
     selectNodeFromInput(label, type = 'start') {
         //Mode d'emploi : 
         // Sélectionne un nœud via son nom saisi dans un champ texte
-        
+
         const node = this.labelMap.get(label);
         if (node) {
             if (type === 'start') {
@@ -1355,8 +1355,8 @@ class RdfExplorer {
 
     async exploreFromStartNode(maxDepth = 3, delay = 1000) {
         //Mode d'emploi :
-            //Méthode pour lancer l'exploration en profondeur
-        
+        //Méthode pour lancer l'exploration en profondeur
+
         // Vérifie que le nœud de départ est défini
         if (!this.startNode) {
             alert("Veuillez sélectionner un nœud de départ.");
@@ -1483,8 +1483,8 @@ class RdfExplorer {
 
     findShortestPath() {
         //Mode d'emploi
-            //Methode pour trouver le chemin le plus court entre deux noeuds
-        
+        //Methode pour trouver le chemin le plus court entre deux noeuds
+
         if (!this.startNode || !this.endNode) {
             alert("Veuillez sélectionner à la fois un nœud de départ et d'arrivée.");
             return;
@@ -1540,7 +1540,7 @@ class RdfExplorer {
 
     highlightPath(path) {
         //Mode d'emploi : 
-            // Affiche les nœuds du chemin en bleu foncé
+        // Affiche les nœuds du chemin en bleu foncé
 
         this.svg.selectAll('.nodes circle')
             .attr('stroke', d => {
@@ -1573,8 +1573,8 @@ class RdfExplorer {
 
     findAllPaths() {
         //Mode d'emploi
-            //Methode pour trouver tous les chemins entre deux noeuds
-        
+        //Methode pour trouver tous les chemins entre deux noeuds
+
         if (!this.startNode || !this.endNode) {
             alert("Veuillez sélectionner à la fois un nœud de départ et d'arrivée.");
             return;
@@ -1673,7 +1673,7 @@ class RdfExplorer {
 
     updateNodeColors() {
         //Mode d'emploi : 
-            // Applique la couleur aux nœuds selon l’échelle active
+        // Applique la couleur aux nœuds selon l’échelle active
 
         const colorScale = this.getColorScale();
         this.svg.selectAll('.nodes circle')
@@ -1709,8 +1709,8 @@ class RdfExplorer {
 
     showSubgraph() {
         //Mode d'emploi : 
-            //Methode pour afficher un sous graphe à partir du noeud de départ et de la profondeur selectionnée
-        
+        //Methode pour afficher un sous graphe à partir du noeud de départ et de la profondeur selectionnée
+
         if (!this.startNode) {
             alert("Veuillez sélectionner un nœud de départ.");
             return;
@@ -1775,8 +1775,8 @@ class RdfExplorer {
 
     resetToFullGraph() {
         //Mode d'emploi :
-            //Méthode pour passer du sous graphe au graphe entier 
-        
+        //Méthode pour passer du sous graphe au graphe entier 
+
         this.visibleNodes = this.previousVisibleNodes;
         this.visibleLinks = this.previousVisibleLinks;
         this.isSubgraphMode = false;
@@ -1787,8 +1787,8 @@ class RdfExplorer {
 
     updateEdgeColors() {
         //Mode d'emploi :
-            //Methode pour mettre à jour la couleur des arêtes selon le mode selectionné
-        
+        //Methode pour mettre à jour la couleur des arêtes selon le mode selectionné
+
         const linkSelection = this.svg.selectAll('.zoom-group .links line');
 
         if (this.edgeColorMode === 'predicate') {
@@ -1816,8 +1816,8 @@ class RdfExplorer {
 
     updateEdgeColorLegend(scale) {
         //Mode d'emploi :
-            //Methode pour mettre à jour la légende concernant la couleur des arêtes selon le mode selectionné
-        
+        //Methode pour mettre à jour la légende concernant la couleur des arêtes selon le mode selectionné
+
         const legendContainer = document.getElementById('colorEdgeLegend');
         legendContainer.innerHTML = '';
 
@@ -1837,8 +1837,8 @@ class RdfExplorer {
 
     hideCurrentlyIsolatedNodes() {
         //Mode d'emploi :
-            //Methode pour ne plus afficher les noeuds n'ayant aucune arête visible
-        
+        //Methode pour ne plus afficher les noeuds n'ayant aucune arête visible
+
         const isolatedIds = new Set();
 
         this.visibleNodes.forEach(n => {
@@ -1861,7 +1861,7 @@ class RdfExplorer {
                 .attr('visibility', 'hidden');
         }
 
-         //mise à jour du compteur en haut à gauche
+        //mise à jour du compteur en haut à gauche
         const newCount = this.visibleNodes.length - isolatedIds.size;
         const overlay = document.getElementById('graphOverlay');
         overlay.innerHTML = `📊 Graphe: ${newCount} nœuds • ${this.visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
@@ -1870,30 +1870,30 @@ class RdfExplorer {
     async runSparqlRequest(query) {
         const endpointInput = document.getElementById('endpointInput');
         const endpointUrl = endpointInput?.value?.trim() || "http://localhost:3030/rdfexplorer/sparql";
-    
+
         const fullUrl = endpointUrl + "?query=" + encodeURIComponent(query);
-    
+
         const response = await fetch(fullUrl, {
             method: 'GET',
             headers: {
                 'Accept': 'application/sparql-results+json'
             }
         });
-    
+
         if (!response.ok) {
             const text = await response.text();
             throw new Error(`Erreur SPARQL ${response.status} :\n${text}`);
         }
-    
+
         return await response.json();
     }
-    
-    
+
+
 
     convertSparqlResultsToTriples(results) {
         //Mode d'emploi :
-            //Méthode pour convertir les données SPARQL en triplets pour les afficher
-        
+        //Méthode pour convertir les données SPARQL en triplets pour les afficher
+
         const triples = [];
 
         for (const binding of results.results.bindings) {
