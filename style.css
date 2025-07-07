@@ -247,3 +247,9 @@ body {
     height: 150px; /* ou toute autre valeur souhaitée */
     resize: vertical; /* permet à l’utilisateur d’agrandir manuellement si souhaité */
 }
+
+#endpointInput {
+    font-size: 13px;
+    padding: 6px 10px;
+    margin-bottom: 8px;
+}
