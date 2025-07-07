@@ -146,9 +146,7 @@ Cliquez sur **▶️ Exécuter** pour interroger le graphe. Le graphe est recons
 ### 🚀 Étapes :
 
 1. Lancer Fuseki :
-   \`\`\`bash
-   fuseki-server.bat
-   \`\`\`
+   \`\`\`java -jar fuseki-server.jar\`\`\`
 2. Créer un dataset nommé `rdfexplorer` dans l’interface web
 3. Importer votre fichier `.ttl` dans le **graphe par défaut**
 4. Utiliser comme endpoint dans RdfExplorer :
