@@ -53,7 +53,7 @@
             </div>
 
             <div class="panel">
-                <div class="panel-header">➡️​ Label des noeuds</div> 
+                <div class="panel-header">➡️​ Label des noeuds</div>
                 <div class="panel-content">
                     <div class="checkbox-group">
                         <div class="checkbox-item">
@@ -74,7 +74,7 @@
             </div>
 
             <div class="panel">
-                <div class="panel-header">➡️​ Label des arêtes</div> 
+                <div class="panel-header">➡️​ Label des arêtes</div>
                 <div class="panel-content">
                     <div class="checkbox-group">
                         <div class="checkbox-item">
@@ -91,14 +91,14 @@
             <div class="panel">
                 <div class="panel-header">🧭 Exploration</div>
 
-                <br/>
+                <br />
                 <div class="form-group">
                     <label>Exploration par arêtes</label>
                     <select class="form-control" id="edgeDirectionSelect">
                         <option>Entrantes + Sortantes</option>
                         <option>Entrantes</option>
                         <option>Sortantes</option>
-                    </select>                        
+                    </select>
                 </div>
 
 
@@ -119,7 +119,7 @@
                             <span>TODO</span>
                         </div>
                     </div>
-                
+
 
                     <button class="btn btn-secondary" id="depthExploreBtn">🎯 Explorer en profondeur</button>
                     <button class="btn btn-secondary" id="SubGraphBtn">🕸️​ Afficher le sous graphe</button>
@@ -127,14 +127,14 @@
                     <div class="form-group" style="margin-top: 15px;">
                         <label>Recherche de chemin</label>
                         <input type="text" class="form-control" placeholder="Nœud d'arrivée" id="endNodeInput">
-                            <button class="btn btn-secondary" id="endNodeBtn">🛑 Sélectionner arrivée</button>
+                        <button class="btn btn-secondary" id="endNodeBtn">🛑 Sélectionner arrivée</button>
                         <button class="btn btn-secondary" id="shortestPathBtn">⚡ Chemin le plus court</button>
                         <button class="btn btn-secondary" id="allPathsBtn">🗺️ Tous les chemins</button>
                         <div id="pathNavigationControls" style="display: none; margin-top: 10px; text-align: center;">
                             <button id="prevPathBtn" class="btn btn-secondary" style="width: auto;">⬅️ </button>
                             <span id="pathCounter" style="margin: 0 10px;">1 / N</span>
                             <button id="nextPathBtn" class="btn btn-secondary" style="width: auto;"> ➡️</button>
-                        </div>                        
+                        </div>
                     </div>
 
                     <div class="form-group" style="margin-top: 15px;">
@@ -171,19 +171,19 @@
                     <div class="form-group">
                         <label for="endpointInput">🔗 Endpoint SPARQL</label>
                         <input type="text" id="endpointInput" class="form-control"
-                               value="http://localhost:3030/rdfexplorer/sparql" />
+                            value="http://localhost:3030/rdfexplorer/sparql" />
                     </div>
-                
+
                     <div class="form-group">
                         <label for="sparqlQueryInput">📝 Requête</label>
                         <textarea id="sparqlQueryInput" class="form-control" placeholder="Exemple: 
                 SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100"></textarea>
                     </div>
-                
+
                     <button id="runSparqlBtn" class="btn btn-secondary">▶️ Exécuter</button>
-                </div>                            
+                </div>
             </div>
-            
+
 
             <!-- Statistiques -->
             <div class="panel" id="stats-panel">
@@ -239,10 +239,10 @@
                             <option>Par degré entrant</option>
                             <option>Par degré sortant</option>
                             <option>Par degré total</option>
-                        </select>                        
+                        </select>
                     </div>
-                    
-                    <div class="color-legend" id="colorNodeLegend">     
+
+                    <div class="color-legend" id="colorNodeLegend">
                         <div class="legend-item"> </div>
                     </div>
 
@@ -253,20 +253,20 @@
                             <option>Par degré sortant</option>
                             <option>Par degré total</option>
                         </select>
-                    </div>            
-                    
+                    </div>
+
                     <div class="form-group">
                         <label for="edgeColorModeSelect">Couleur des arêtes</label>
                         <select class="form-control" id="edgeColorModeSelect">
                             <option>Par prédicats</option>
                             <option>Pas de coloration</option>
                         </select>
-                    </div>       
-                    
-                    <div class="color-legend" id="colorEdgeLegend">     
+                    </div>
+
+                    <div class="color-legend" id="colorEdgeLegend">
                         <div class="legend-item"> </div>
                     </div>
-                    
+
                 </div>
             </div>
 
