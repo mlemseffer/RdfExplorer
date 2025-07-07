@@ -77,7 +77,7 @@ Depuis la version récente, `RdfExplorer` permet d’interroger un **endpoint SP
 1. Lancez Fuseki :
 
 ```bash
-fuseki-server.bat
+ java -jar fuseki-server.jar
 ```
 
 2. Créez un dataset nommé `rdfexplorer`  
