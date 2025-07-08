@@ -1868,6 +1868,8 @@ class RdfExplorer {
     }
 
     async runSparqlRequest(query) {
+        //Mode d'emploi
+            //Lance une requête au endpoint SPARQL
         const endpointInput = document.getElementById('endpointInput');
         const endpointUrl = endpointInput?.value?.trim() || "http://localhost:3030/rdfexplorer/sparql";
 
