@@ -108,7 +108,7 @@ Cela permet d’utiliser un **serveur Fuseki local** si vous avez chargé vos do
 
 ### 🧪 Exemple de requête
 
-\`\`\`sparql
+\`\`\`
 SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100
 \`\`\`
 
