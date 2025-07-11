@@ -519,33 +519,31 @@ class RdfExplorer {
 
         const typeSet = new Set(this.graph.nodes.map(n => n.type));
         const container = document.getElementById('rdfTypesCheckboxes');
+        container.innerHTML = '';
 
-        container.innerHTML = ''; // Réinitialiser
+        if (!this.isSparqlGraph) {
+            this.activeTypes.clear();
+        }
 
         typeSet.forEach(type => {
             const id = `type-${type.replace(/[^a-zA-Z0-9]/g, '')}`;
-
             const div = document.createElement('div');
             div.classList.add('checkbox-item');
             div.innerHTML = `
-                <input type="checkbox" id="${id}">
+                <input type="checkbox" id="${id}" data-type="${type}" ${this.activeTypes.has(type) ? 'checked' : ''}>
                 <label for="${id}">${type}</label>
             `;
             container.appendChild(div);
 
-            // Écouteur : ajouter/supprimer dynamiquement
             div.querySelector('input').addEventListener('change', (e) => {
                 if (e.target.checked) {
                     this.activeTypes.add(type);
                 } else {
                     this.activeTypes.delete(type);
                 }
-                this.renderGraph(); // Redessiner
+                this.renderGraph();
             });
         });
-
-        // Réinitialiser le Set (vide par défaut)
-        this.activeTypes.clear();
     }
 
 
