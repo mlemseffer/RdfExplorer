@@ -47,6 +47,8 @@ class RdfExplorer {
 
         this.subgraphNodes = [];
         this.subgraphLinks = [];
+        this.subgraphRootNode = null;
+
 
         //Optimisation
 
@@ -54,6 +56,9 @@ class RdfExplorer {
         this.adjList = new Map();
         this.revAdjList = new Map();
         this.labelMap = new Map();
+
+        //SPARQL
+        this.isSparqlGraph = false;
 
         //Demarrage de l'application
         this.init();
@@ -298,6 +303,21 @@ class RdfExplorer {
             }
         });
 
+        //Bouton expand pour le noeud selectionné
+        document.getElementById('expandSparqlBtn').addEventListener('click', async () => {
+            await this.expandSelectedNode();
+        });
+
+        //Mettre à jour la valeur du range des triplets à ajouter
+        document.getElementById('expandLimitRange').addEventListener('input', (e) => {
+            document.getElementById('expandLimitValue').textContent = e.target.value;
+        });
+
+        //Bouton Etendre et filtrer
+        document.getElementById('expandFilterSparqlBtn').addEventListener('click', async () => {
+            await this.expandAndFilterSelectedNode();
+        });
+
     }
 
     async loadRDFFile(file) {
@@ -305,6 +325,8 @@ class RdfExplorer {
         // Charge un fichier RDF (.ttl), l’analyse et construit le graphe. Si un graphe était deja présent, on le supprime
 
         try {
+            this.isSparqlGraph = false;
+            this.updateExpandButtonState();
             this.deleteGraph(); //On supprime le graphe deja présent dans le cas où on avait deja un graphe
             const content = await this.readFileContent(file);
             const triples = await this.parseWithN3(content);
@@ -429,7 +451,14 @@ class RdfExplorer {
                 if (node.id.includes('xmlns.com/foaf/0.1/') || node.id.includes('schema.org')) {
                     // Cas spécial foaf : on considère directement comme une classe
                     node.type = "Class";
-                } else {
+                }
+                else if (node.id.includes('course_')){
+                    node.type = "LearningResource"
+                }
+                else if (node.id.includes('user_')){
+                    node.type = "Person"
+                }
+                else {
                     const segments = node.id.split('/').filter(Boolean);
                     if (segments.length >= 2) {
                         node.type = segments[segments.length - 2]; // avant-dernier segment
@@ -604,11 +633,14 @@ class RdfExplorer {
         const predicateFilteredLinks = sourceLinks.filter(l => this.activePredicates.has(l.predicate));
 
         // 3. Première passe : nœuds qui respectent type + degré
+        const anchorNodeId = this.isSubgraphMode && this.subgraphRootNode ? this.subgraphRootNode.id : (this.startNode ? this.startNode.id : null);
+
         const nodeCandidates = sourceNodes.filter(n => {
             const totalDegree = n.inDegree + n.outDegree;
             const passesDegree = totalDegree >= this.minDegreeFilter;
             const isVisibleType = this.activeTypes ? this.activeTypes.has(n.type) : true;
-            return passesDegree && isVisibleType;
+            const isAnchorNode = anchorNodeId && n.id === anchorNodeId;
+            return (passesDegree && isVisibleType) || isAnchorNode;
         });
 
         const candidateNodeIds = new Set(nodeCandidates.map(n => n.id));
@@ -631,7 +663,7 @@ class RdfExplorer {
 
         // 6. Filtrage final : masquer les nœuds isolés (non connectés à une arête visible)
         const visibleNodes = nodeCandidates.filter(n => {
-            return !this.hideIsolatedNodes || usedNodeIds.has(n.id);
+            return (!this.hideIsolatedNodes || usedNodeIds.has(n.id)) || (anchorNodeId && n.id === anchorNodeId);
         });
 
         const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
@@ -1326,14 +1358,17 @@ class RdfExplorer {
 
         this.svg.selectAll('.nodes circle')
             .attr('stroke', d => {
+                if (this.isSubgraphMode && d === this.subgraphRootNode) return 'blue';
                 if (d === this.startNode) return 'green';
                 if (d === this.endNode) return 'red';
                 return 'white';
             })
             .attr('stroke-width', d => {
+                if (this.isSubgraphMode && d === this.subgraphRootNode) return 6;
                 if (d === this.startNode || d === this.endNode) return 4;
                 return 2;
             });
+
     }
 
     updateSelectedNodeHighlight() {
@@ -1765,6 +1800,7 @@ class RdfExplorer {
 
         // Active le mode sous-graphe
         this.isSubgraphMode = true;
+        this.subgraphRootNode = this.startNode;
 
         // On déclenche le rendu qui appliquera les filtres d'affichage sur ce sous-graphe
         this.renderGraph();
@@ -1780,6 +1816,7 @@ class RdfExplorer {
         this.visibleNodes = this.previousVisibleNodes;
         this.visibleLinks = this.previousVisibleLinks;
         this.isSubgraphMode = false;
+        this.subgraphRootNode = null;
         this.renderGraph();
 
         document.getElementById('SubGraphBtn').textContent = '🕸️ Afficher le sous graphe';
@@ -1869,7 +1906,7 @@ class RdfExplorer {
 
     async runSparqlRequest(query) {
         //Mode d'emploi
-            //Lance une requête au endpoint SPARQL
+        //Lance une requête au endpoint SPARQL
         const endpointInput = document.getElementById('endpointInput');
         const endpointUrl = endpointInput?.value?.trim() || "http://localhost:3030/rdfexplorer/sparql";
 
@@ -1887,29 +1924,27 @@ class RdfExplorer {
             throw new Error(`Erreur SPARQL ${response.status} :\n${text}`);
         }
 
+        this.isSparqlGraph = true;
+        this.updateExpandButtonState();
         return await response.json();
     }
 
 
-
-    convertSparqlResultsToTriples(results) {
-        //Mode d'emploi :
-        //Méthode pour convertir les données SPARQL en triplets pour les afficher
-
+    convertSparqlResultsToTriples(results, isExpand = false, nodeId = null) {
         const triples = [];
 
         for (const binding of results.results.bindings) {
-            const s = binding.s?.value;
-            const p = binding.p?.value;
-            const o = binding.o?.value;
-            const oType = binding.o?.type;
+            const s = binding.s ? binding.s.value : (isExpand ? nodeId : null);
+            const p = binding.p ? binding.p.value : null;
+            const o = binding.o ? binding.o.value : (isExpand ? nodeId : null);
+            const oType = binding.o ? (binding.o.type === "literal" ? "Literal" : "NamedNode") : "NamedNode";
 
-            if (s && p && o) {
+            if (s && p && o) {  // on garde seulement les triples complets
                 triples.push({
                     subject: s,
                     predicate: p,
                     object: o,
-                    objectType: oType === "literal" ? "Literal" : "NamedNode"
+                    objectType: oType
                 });
             }
         }
@@ -1917,6 +1952,159 @@ class RdfExplorer {
         return triples;
     }
 
+
+    async expandSelectedNode() {
+        //Mode d'emploi : 
+        //Lance une requete SPARQL pour étendre l'affichage d'un noeud selectionné
+
+        if (!this.isSparqlGraph) {
+            alert("Le graphe actuel ne provient pas d'une requête SPARQL. Impossible d'étendre.");
+            return;
+        }
+
+
+        if (!this.selectedNode) {
+            alert("Veuillez d'abord sélectionner un nœud.");
+            return;
+        }
+
+        const nodeId = this.selectedNode.id;
+        const limitValue = document.getElementById('expandLimitRange').value;
+
+        const query = `
+        SELECT ?s ?p ?o WHERE {
+            { ?s ?p <${nodeId}> }
+            UNION
+            { <${nodeId}> ?p ?o }
+        } LIMIT ${limitValue}
+    `;
+
+        try {
+            const results = await this.runSparqlRequest(query);
+            const newTriples = this.convertSparqlResultsToTriples(results, true, nodeId);
+
+            if (newTriples.length === 0) {
+                alert("Aucun nouveau triplet trouvé pour étendre.");
+                return;
+            }
+
+            // 🔥 Récupérer les types des nouveaux nœuds
+            await this.enrichWithTypes(newTriples);
+
+            // 🔗 Fusionner avec le graphe existant
+            this.graph.triples = this.graph.triples.concat(newTriples);
+            this.buildGraphFromTriples(this.graph.triples);
+            this.extractActivePredicates();
+            this.extractActiveTypes();
+            this.updateStatistics();
+            this.renderGraph();
+
+            alert(`${newTriples.length} triplets ajoutés au graphe.`);
+        } catch (e) {
+            alert("Erreur lors de l'extension SPARQL : " + e.message);
+            console.error(e);
+        }
+    }
+
+    updateExpandButtonState() {
+        const expandBtn = document.getElementById('expandSparqlBtn');
+        const expandFilterBtn = document.getElementById('expandFilterSparqlBtn');
+
+        if (this.isSparqlGraph) {
+            expandBtn.disabled = false;
+            expandBtn.classList.remove('disabled-button');
+
+            expandFilterBtn.disabled = false;
+            expandFilterBtn.classList.remove('disabled-button');
+        } else {
+            expandBtn.disabled = true;
+            expandBtn.classList.add('disabled-button');
+
+            expandFilterBtn.disabled = true;
+            expandFilterBtn.classList.add('disabled-button');
+        }
+    }
+
+
+    async expandAndFilterSelectedNode() {
+        if (!this.selectedNode) {
+            alert("Veuillez d'abord sélectionner un nœud.");
+            return;
+        }
+
+        const nodeId = this.selectedNode.id;
+        const limitValue = document.getElementById('expandLimitRange').value;
+
+        const query = `
+        SELECT ?s ?p ?o WHERE {
+            { ?s ?p <${nodeId}> }
+            UNION
+            { <${nodeId}> ?p ?o }
+        } LIMIT ${limitValue}
+    `;
+
+        try {
+            const results = await this.runSparqlRequest(query);
+            const newTriples = this.convertSparqlResultsToTriples(results, true, nodeId);
+
+            if (newTriples.length === 0) {
+                alert("Aucun nouveau triplet trouvé.");
+                return;
+            }
+
+            // 🔥 Récupérer les types des nouveaux nœuds
+            await this.enrichWithTypes(newTriples);
+
+            // 💥 Remplacer complètement le graphe
+            this.deleteGraph();
+            this.graph.triples = newTriples;
+            this.buildGraphFromTriples(newTriples);
+            this.extractActivePredicates();
+            this.extractActiveTypes();
+            this.updateStatistics();
+            this.renderGraph();
+
+            alert(`${newTriples.length} triplets récupérés et affichés.`);
+        } catch (e) {
+            alert("Erreur lors de l'extension filtrée SPARQL : " + e.message);
+            console.error(e);
+        }
+    }
+
+    async enrichWithTypes(newTriples) {
+        const uniqueNodes = new Set();
+    
+        newTriples.forEach(t => {
+            uniqueNodes.add(t.subject);
+            if (t.objectType === 'NamedNode') {
+                uniqueNodes.add(t.object);
+            }
+        });
+    
+        if (uniqueNodes.size === 0) return;
+    
+        const valuesClause = Array.from(uniqueNodes).map(uri => `<${uri}>`).join(' ');
+        const typeQuery = `
+            SELECT ?node ?type WHERE {
+                VALUES ?node { ${valuesClause} }
+                ?node a ?type .
+            }
+        `;
+    
+        try {
+            const typeResults = await this.runSparqlRequest(typeQuery);
+            const typeTriples = typeResults.results.bindings.map(b => ({
+                subject: b.node.value,
+                predicate: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
+                object: b.type.value,
+                objectType: 'NamedNode'
+            }));
+    
+            this.graph.triples = this.graph.triples.concat(typeTriples);
+        } catch (e) {
+            console.warn("Erreur lors de la récupération des types :", e.message);
+        }
+    }    
 
 }
 
