@@ -181,6 +181,17 @@
                     </div>
 
                     <button id="runSparqlBtn" class="btn btn-secondary">▶️ Exécuter</button>
+                    <div class="form-group">
+                        <label for="expandLimitRange">Nombre de triplets à ajouter : <span id="expandLimitValue">100</span></label>
+                        <input type="range" id="expandLimitRange" class="range-input" min="1" max="200" value="100" step="1">
+                        <div class="range-labels">
+                            <span>10</span>
+                            <span>100</span>
+                            <span>200</span>
+                        </div>
+                    </div>
+                    <button id="expandSparqlBtn" class="btn btn-secondary">🛜​ Étendre</button>
+                    <button id="expandFilterSparqlBtn" class="btn btn-secondary">🌊 Étendre et filtrer</button>
                 </div>
             </div>
 
