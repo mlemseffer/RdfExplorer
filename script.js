@@ -318,6 +318,11 @@ class RdfExplorer {
             await this.expandAndFilterSelectedNode();
         });
 
+        //Bouton ajouter tous les voisins
+        document.getElementById('addAllNeighborsSparqlBtn').addEventListener('click', async () => {
+            await this.addAllNeighborsOfSelectedNode();
+        });
+
     }
 
     async loadRDFFile(file) {
@@ -452,10 +457,10 @@ class RdfExplorer {
                     // Cas spécial foaf : on considère directement comme une classe
                     node.type = "Class";
                 }
-                else if (node.id.includes('course_')){
+                else if (node.id.includes('course_')) {
                     node.type = "LearningResource"
                 }
-                else if (node.id.includes('user_')){
+                else if (node.id.includes('user_')) {
                     node.type = "Person"
                 }
                 else {
@@ -2071,16 +2076,16 @@ class RdfExplorer {
 
     async enrichWithTypes(newTriples) {
         const uniqueNodes = new Set();
-    
+
         newTriples.forEach(t => {
             uniqueNodes.add(t.subject);
             if (t.objectType === 'NamedNode') {
                 uniqueNodes.add(t.object);
             }
         });
-    
+
         if (uniqueNodes.size === 0) return;
-    
+
         const valuesClause = Array.from(uniqueNodes).map(uri => `<${uri}>`).join(' ');
         const typeQuery = `
             SELECT ?node ?type WHERE {
@@ -2088,7 +2093,7 @@ class RdfExplorer {
                 ?node a ?type .
             }
         `;
-    
+
         try {
             const typeResults = await this.runSparqlRequest(typeQuery);
             const typeTriples = typeResults.results.bindings.map(b => ({
@@ -2097,12 +2102,59 @@ class RdfExplorer {
                 object: b.type.value,
                 objectType: 'NamedNode'
             }));
-    
+
             this.graph.triples = this.graph.triples.concat(typeTriples);
         } catch (e) {
             console.warn("Erreur lors de la récupération des types :", e.message);
         }
-    }    
+    }
+
+    async addAllNeighborsOfSelectedNode() {
+        if (!this.isSparqlGraph) {
+            alert("Le graphe actuel ne provient pas d'une requête SPARQL. Impossible d'ajouter des voisins.");
+            return;
+        }
+
+        if (!this.selectedNode) {
+            alert("Veuillez d'abord sélectionner un nœud.");
+            return;
+        }
+
+        const nodeId = this.selectedNode.id;
+        const formattedNodeId = nodeId.startsWith('http') ? `<${nodeId}>` : `"${nodeId}"`;
+
+        const query = `
+            SELECT ?s ?p ?o WHERE {
+                { ?s ?p ${formattedNodeId} }
+                UNION
+                { ${formattedNodeId} ?p ?o }
+            }
+        `;
+
+        try {
+            const results = await this.runSparqlRequest(query);
+            const newTriples = this.convertSparqlResultsToTriples(results, true, nodeId);
+
+            if (newTriples.length === 0) {
+                alert("Aucun nouveau voisin trouvé.");
+                return;
+            }
+
+            await this.enrichWithTypes(newTriples);
+
+            this.graph.triples = this.graph.triples.concat(newTriples);
+            this.buildGraphFromTriples(this.graph.triples);
+            this.extractActivePredicates();
+            this.extractActiveTypes();
+            this.updateStatistics();
+            this.renderGraph();
+
+            alert(`${newTriples.length} voisins ajoutés au graphe.`);
+        } catch (e) {
+            alert("Erreur lors de l'ajout des voisins : " + e.message);
+            console.error(e);
+        }
+    }
 
 }
 
