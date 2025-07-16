@@ -282,9 +282,13 @@ class RdfExplorer {
 
         //Bouton pour lancer la requête SPARQL saisie
         document.getElementById('runSparqlBtn').addEventListener('click', async () => {
+            const loadingOverlay = document.getElementById('loadingOverlay');
+            loadingOverlay.style.display = 'flex'; // montre l'animation
+        
             const query = document.getElementById('sparqlQueryInput').value;
             if (!query.trim()) {
                 alert("Veuillez saisir une requête SPARQL.");
+                loadingOverlay.style.display = 'none'; // cache même si erreur
                 return;
             }
         
@@ -317,8 +321,10 @@ class RdfExplorer {
             } catch (e) {
                 alert("Erreur lors de l'exécution SPARQL : " + e.message);
                 console.error(e);
+            } finally {
+                loadingOverlay.style.display = 'none'; // cache l'animation quoi qu'il arrive
             }
-        });
+        });        
         
 
         //Bouton expand pour le noeud selectionné
