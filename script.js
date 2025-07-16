@@ -614,7 +614,7 @@ class RdfExplorer {
 
         if (!typeUri || typeof typeUri !== 'string') return 'unknown';
         const label = this.extractLabel(typeUri);
-        return label || 'unknown';
+        return label ? label.toLowerCase() : 'unknown';
     }
 
     inferLiteralType(predicate) {
