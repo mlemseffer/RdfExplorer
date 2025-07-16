@@ -60,6 +60,15 @@ class RdfExplorer {
         //SPARQL
         this.isSparqlGraph = false;
 
+        //Ne pas recalculer à chaque fois toute la légende
+
+        this.globalPredicates = new Set();
+        this.globalTypes = new Set();
+        this.typeColorMap = new Map();
+        this.predicateColorMap = new Map();
+        this.colorPalette = d3.schemeCategory10.concat(d3.schemeSet3);
+
+
         //Demarrage de l'application
         this.init();
     }
@@ -278,30 +287,39 @@ class RdfExplorer {
                 alert("Veuillez saisir une requête SPARQL.");
                 return;
             }
-
+        
             try {
                 const results = await this.runSparqlRequest(query);
                 const triples = this.convertSparqlResultsToTriples(results);
-
+        
                 if (triples.length === 0) {
                     alert("Aucun triplet retourné.");
                     return;
                 }
-
-                //Nous souhaitons afficher le graphe obtenu avec notre requête SPARQL
+        
                 this.deleteGraph();
                 this.graph.triples = triples;
                 this.buildGraphFromTriples(triples);
+        
+                this.globalPredicates = new Set(this.graph.triples.map(t => t.predicate));
+                this.globalTypes = new Set(this.graph.nodes.map(n => n.type));
+                this.typeColorMap.clear();
+                this.predicateColorMap.clear();
+        
+                this.activePredicates = new Set(this.globalPredicates);
+                this.activeTypes.clear();
+        
                 this.extractActivePredicates();
                 this.extractActiveTypes();
                 this.updateStatistics();
                 this.renderGraph();
-
+        
             } catch (e) {
                 alert("Erreur lors de l'exécution SPARQL : " + e.message);
                 console.error(e);
             }
         });
+        
 
         //Bouton expand pour le noeud selectionné
         document.getElementById('expandSparqlBtn').addEventListener('click', async () => {
@@ -327,16 +345,25 @@ class RdfExplorer {
 
     async loadRDFFile(file) {
         //Mode d'emploi : 
-        // Charge un fichier RDF (.ttl), l’analyse et construit le graphe. Si un graphe était deja présent, on le supprime
-
+        // Charge un fichier RDF (.ttl), l’analyse et construit le graphe. Si un graphe était déjà présent, on le supprime
+    
         try {
             this.isSparqlGraph = false;
             this.updateExpandButtonState();
-            this.deleteGraph(); //On supprime le graphe deja présent dans le cas où on avait deja un graphe
+            this.deleteGraph();
             const content = await this.readFileContent(file);
             const triples = await this.parseWithN3(content);
             this.graph.triples = triples;
             this.buildGraphFromTriples(triples);
+    
+            this.globalPredicates = new Set(this.graph.triples.map(t => t.predicate));
+            this.globalTypes = new Set(this.graph.nodes.map(n => n.type));
+            this.typeColorMap.clear();
+            this.predicateColorMap.clear();
+    
+            this.activePredicates = new Set(this.globalPredicates);
+            this.activeTypes.clear();
+    
             this.extractActivePredicates();
             this.extractActiveTypes();
             this.updateStatistics();
@@ -346,6 +373,8 @@ class RdfExplorer {
             alert('Erreur lors du chargement du fichier RDF: ' + error.message);
         }
     }
+    
+    
 
     readFileContent(file) {
         //Mode d'emploi : 
@@ -489,31 +518,37 @@ class RdfExplorer {
 
         const predicateSet = new Set(this.graph.triples.map(t => t.predicate));
         const container = document.getElementById('predicatePanelContent');
-
         const group = document.getElementById('predicateCheckboxes');
-        group.innerHTML = ''; // on le vide proprement
+        group.innerHTML = '';
 
         predicateSet.forEach(pred => {
-            const id = `pred-${this.extractLabel(pred).replace(/[^a-zA-Z0-9]/g, '')}`;
-            const checked = true;
             this.activePredicates.add(pred);
+            this.globalPredicates.add(pred);
+            if (!this.predicateColorMap.has(pred)) {
+                const index = this.predicateColorMap.size % this.colorPalette.length;
+                this.predicateColorMap.set(pred, this.colorPalette[index]);
+            }
+        });
+
+        this.globalPredicates.forEach(pred => {
+            const id = `pred-${this.extractLabel(pred).replace(/[^a-zA-Z0-9]/g, '')}`;
+            const checked = this.activePredicates.has(pred);
 
             const div = document.createElement('div');
             div.classList.add('checkbox-item');
             div.innerHTML = `
-                <input type="checkbox" id="${id}" checked>
-                <label for="${id}">${this.extractLabel(pred)}</label>
-            `;
+            <input type="checkbox" id="${id}" ${checked ? 'checked' : ''}>
+            <label for="${id}">${this.extractLabel(pred)}</label>
+        `;
             group.appendChild(div);
 
-            // Écouteur : ajouter/supprimer dynamiquement
             div.querySelector('input').addEventListener('change', (e) => {
                 if (e.target.checked) {
                     this.activePredicates.add(pred);
                 } else {
                     this.activePredicates.delete(pred);
                 }
-                this.renderGraph(); // Refresh graph with filter
+                this.renderGraph();
             });
         });
     }
@@ -521,25 +556,31 @@ class RdfExplorer {
     extractActiveTypes() {
         //Mode d'emploi : 
         // Récupère tous les types de nœuds et génère les filtres associés
-
+    
         const typeSet = new Set(this.graph.nodes.map(n => n.type));
         const container = document.getElementById('rdfTypesCheckboxes');
         container.innerHTML = '';
-
-        if (!this.isSparqlGraph) {
-            this.activeTypes.clear();
-        }
-
+    
         typeSet.forEach(type => {
+            this.globalTypes.add(type);
+            if (!this.typeColorMap.has(type)) {
+                const index = this.typeColorMap.size % this.colorPalette.length;
+                this.typeColorMap.set(type, this.colorPalette[index]);
+            }
+        });
+    
+        this.globalTypes.forEach(type => {
             const id = `type-${type.replace(/[^a-zA-Z0-9]/g, '')}`;
+            const checked = this.activeTypes.has(type);
+    
             const div = document.createElement('div');
             div.classList.add('checkbox-item');
             div.innerHTML = `
-                <input type="checkbox" id="${id}" data-type="${type}" ${this.activeTypes.has(type) ? 'checked' : ''}>
+                <input type="checkbox" id="${id}" data-type="${type}" ${checked ? 'checked' : ''}>
                 <label for="${id}">${type}</label>
             `;
             container.appendChild(div);
-
+    
             div.querySelector('input').addEventListener('change', (e) => {
                 if (e.target.checked) {
                     this.activeTypes.add(type);
@@ -550,7 +591,7 @@ class RdfExplorer {
             });
         });
     }
-
+    
 
     extractLabel(uri) {
         //Mode d'emploi : 
@@ -916,10 +957,9 @@ class RdfExplorer {
 
         this.labelMap.clear();
 
-        //On remet à 0 les prédicats actifs
-        this.activePredicates = new Set();
+        this.activePredicates.clear();
+        this.activeTypes.clear();
 
-        // Supprime l'affichage SVG
         if (this.svg) {
             this.svg.selectAll('*').remove();
             this.svg.append('g').attr('class', 'zoom-group');
@@ -930,7 +970,6 @@ class RdfExplorer {
         this.updateStatistics();
         document.getElementById('fileInput').value = '';
 
-        // Réinitialise les états de chemin et navigation
         this.allPaths = [];
         this.currentPathIndex = 0;
         this.startNode = null;
@@ -942,6 +981,7 @@ class RdfExplorer {
         const overlay = document.getElementById('graphOverlay');
         overlay.innerHTML = `📊 Graphe: 0 nœuds • 0 arêtes • <span id="zoom">Zoom : 100%</span>`;
     }
+
 
     dragstarted(event, d) {
         //Mode d'emploi : 
@@ -1125,15 +1165,8 @@ class RdfExplorer {
     }
 
     exportVisibleRDFandConfig() {
-        //Mode d'emploi :
-        //Méthode pour exporter le graph RDF actuellement visible
-
-        // Préparation des IDs visibles (nœuds dans le graphe affiché)
         const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
 
-        // Triplets à exporter : 
-        // - ceux dont le sujet ET l’objet sont visibles
-        // - ou ceux dont le prédicat est rdf:type (même si l’objet est hors sous-graphe)
         const visibleTriples = this.graph.triples.filter(t => {
             const isSubjectVisible = visibleNodeIds.has(t.subject);
             const isObjectVisible = visibleNodeIds.has(t.object);
@@ -1141,7 +1174,6 @@ class RdfExplorer {
             return (isSubjectVisible && isObjectVisible) || (isSubjectVisible && isRDFType);
         });
 
-        // Génération du contenu Turtle (.ttl)
         let ttlContent = '';
         visibleTriples.forEach(t => {
             const subject = `<${t.subject}>`;
@@ -1150,7 +1182,6 @@ class RdfExplorer {
             ttlContent += `${subject} ${predicate} ${object} .\n`;
         });
 
-        // Génération du contenu Config (.json)
         const config = {
             activePredicates: Array.from(this.activePredicates),
             activeTypes: Array.from(this.activeTypes),
@@ -1159,12 +1190,15 @@ class RdfExplorer {
             nodeColorMode: this.nodeColorMode,
             nodeSizeMode: this.nodeSizeMode,
             showEdgeLabels: this.showEdgeLabels,
-            simulationPaused: this.simulationPaused
+            simulationPaused: this.simulationPaused,
+            globalPredicates: Array.from(this.globalPredicates),
+            globalTypes: Array.from(this.globalTypes),
+            typeColorMap: Object.fromEntries(this.typeColorMap),
+            predicateColorMap: Object.fromEntries(this.predicateColorMap)
         };
 
         const configContent = JSON.stringify(config, null, 2);
 
-        // Fonction de téléchargement
         const download = (filename, content, mimeType) => {
             const blob = new Blob([content], { type: mimeType });
             const url = URL.createObjectURL(blob);
@@ -1177,20 +1211,15 @@ class RdfExplorer {
             URL.revokeObjectURL(url);
         };
 
-        // Déclenche les téléchargements
         download("export.ttl", ttlContent, "text/turtle");
         download("config.json", configContent, "application/json");
     }
 
-
     async loadConfigFile(file) {
-        //Mode d'emploi
-        // Exporte les triplets visibles et la configuration courante
         try {
             const content = await file.text();
             const config = JSON.parse(content);
-
-            // Restaurer les options
+    
             this.activePredicates = new Set(config.activePredicates || []);
             this.activeTypes = new Set(config.activeTypes || []);
             this.hideIsolatedNodes = !!config.hideIsolatedNodes;
@@ -1199,49 +1228,48 @@ class RdfExplorer {
             this.nodeSizeMode = config.nodeSizeMode || 'total';
             this.showEdgeLabels = !!config.showEdgeLabels;
             this.simulationPaused = !!config.simulationPaused;
-
-            // Appliquer les réglages UI
+    
+            this.globalPredicates = new Set(config.globalPredicates || []);
+            this.globalTypes = new Set(config.globalTypes || []);
+            this.typeColorMap = new Map(Object.entries(config.typeColorMap || {}));
+            this.predicateColorMap = new Map(Object.entries(config.predicateColorMap || {}));
+    
             document.getElementById('showEdgeLabels').checked = this.showEdgeLabels;
             document.getElementById('hideIsolatedNodes').checked = this.hideIsolatedNodes;
-
+    
             const rangeInput = document.getElementById('degreeRangeInput');
             rangeInput.value = this.minDegreeFilter;
             document.getElementById('minDegreeValue').textContent = this.minDegreeFilter;
-
+    
             document.getElementById('nodeColorModeSelect').value = {
                 'type': 'Par type RDF',
                 'in': 'Par degré entrant',
                 'out': 'Par degré sortant',
                 'total': 'Par degré total'
             }[this.nodeColorMode];
-
+    
             document.getElementById('nodeSizeModeSelect').value = {
                 'in': 'Par degré entrant',
                 'out': 'Par degré sortant',
                 'total': 'Par degré total'
             }[this.nodeSizeMode];
-
-            // Re-render après application config
+    
             this.renderGraph();
-
-            // Appliquer l'état de pause
+    
             const toggle = document.getElementById('toggleSimulationBtn');
             if (this.simulationPaused) {
-                // On stoppe explicitement sans relancer quoi que ce soit
                 this.simulation.stop();
                 if (toggle) toggle.textContent = '▶️ Reprendre Simulation';
             } else {
-                // Ne redémarrer que si nécessaire
                 this.simulation.alpha(0.3);
                 if (toggle) toggle.textContent = '⏸️ Pause Simulation';
             }
-
+    
         } catch (e) {
             console.error('Erreur lors du chargement de la configuration:', e);
             alert('Erreur lors du chargement du fichier de configuration.');
         }
-    }
-
+    }    
 
     updateDepthSlider(maxDepth) {
         //Mode d'emploi : 
@@ -1690,11 +1718,10 @@ class RdfExplorer {
         // Génère une échelle de couleurs selon le type ou le degré des nœuds
 
         if (this.nodeColorMode === 'type') {
-            const types = Array.from(new Set(this.graph.nodes.map(n => n.type))).sort();
-            const colorPalette = d3.schemeCategory10.concat(d3.schemeSet3);
+            const types = Array.from(this.globalTypes).sort();
             const scale = d3.scaleOrdinal()
                 .domain(types)
-                .range(colorPalette.slice(0, types.length));
+                .range(types.map(type => this.typeColorMap.get(type)));
             return scale;
         } else {
             let degreeAccessor;
@@ -1827,16 +1854,15 @@ class RdfExplorer {
 
     updateEdgeColors() {
         //Mode d'emploi :
-        //Methode pour mettre à jour la couleur des arêtes selon le mode selectionné
+        // Méthode pour mettre à jour la couleur des arêtes selon le mode sélectionné
 
         const linkSelection = this.svg.selectAll('.zoom-group .links line');
 
         if (this.edgeColorMode === 'predicate') {
-            const predicates = Array.from(new Set(this.graph.links.map(l => l.predicate))).sort();
-            const colorPalette = d3.schemeTableau10.concat(d3.schemeSet3);
+            const predicates = Array.from(this.globalPredicates).sort();
             const colorScale = d3.scaleOrdinal()
                 .domain(predicates)
-                .range(colorPalette.slice(0, predicates.length));
+                .range(predicates.map(pred => this.predicateColorMap.get(pred)));
 
             linkSelection
                 .transition()
@@ -1853,6 +1879,7 @@ class RdfExplorer {
             this.updateEdgeColorLegend(null);
         }
     }
+
 
     updateEdgeColorLegend(scale) {
         //Mode d'emploi :
@@ -1935,21 +1962,21 @@ class RdfExplorer {
 
     convertSparqlResultsToTriples(results, isExpand = false, nodeId = null) {
         const triples = [];
-    
+
         const variables = results.head.vars;  // récupère la liste des colonnes
         if (variables.length < 3) {
             console.warn("Pas assez de colonnes pour former un triple :", variables);
             return triples;
         }
-    
+
         const [firstVar, secondVar, thirdVar] = variables;  // ordre garanti
-    
+
         for (const binding of results.results.bindings) {
             const s = binding[firstVar]?.value || (isExpand ? nodeId : null);
             const p = binding[secondVar]?.value || null;
             const o = binding[thirdVar]?.value || (isExpand ? nodeId : null);
             const oType = binding[thirdVar]?.type === "literal" ? "Literal" : "NamedNode";
-    
+
             if (s && p && o) {
                 triples.push({
                     subject: s,
@@ -1959,10 +1986,10 @@ class RdfExplorer {
                 });
             }
         }
-    
+
         return triples;
     }
-    
+
 
 
     async expandSelectedNode() {
