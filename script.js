@@ -1935,14 +1935,22 @@ class RdfExplorer {
 
     convertSparqlResultsToTriples(results, isExpand = false, nodeId = null) {
         const triples = [];
-
+    
+        const variables = results.head.vars;  // récupère la liste des colonnes
+        if (variables.length < 3) {
+            console.warn("Pas assez de colonnes pour former un triple :", variables);
+            return triples;
+        }
+    
+        const [firstVar, secondVar, thirdVar] = variables;  // ordre garanti
+    
         for (const binding of results.results.bindings) {
-            const s = binding.s ? binding.s.value : (isExpand ? nodeId : null);
-            const p = binding.p ? binding.p.value : null;
-            const o = binding.o ? binding.o.value : (isExpand ? nodeId : null);
-            const oType = binding.o ? (binding.o.type === "literal" ? "Literal" : "NamedNode") : "NamedNode";
-
-            if (s && p && o) {  // on garde seulement les triples complets
+            const s = binding[firstVar]?.value || (isExpand ? nodeId : null);
+            const p = binding[secondVar]?.value || null;
+            const o = binding[thirdVar]?.value || (isExpand ? nodeId : null);
+            const oType = binding[thirdVar]?.type === "literal" ? "Literal" : "NamedNode";
+    
+            if (s && p && o) {
                 triples.push({
                     subject: s,
                     predicate: p,
@@ -1951,9 +1959,10 @@ class RdfExplorer {
                 });
             }
         }
-
+    
         return triples;
     }
+    
 
 
     async expandSelectedNode() {
