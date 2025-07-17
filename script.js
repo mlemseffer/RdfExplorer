@@ -286,48 +286,48 @@ class RdfExplorer {
         document.getElementById('runSparqlBtn').addEventListener('click', async () => {
             const loadingOverlay = document.getElementById('loadingOverlay');
             loadingOverlay.style.display = 'flex'; // montre l'animation
-        
+
             const query = document.getElementById('sparqlQueryInput').value;
             if (!query.trim()) {
                 alert("Veuillez saisir une requête SPARQL.");
                 loadingOverlay.style.display = 'none'; // cache même si erreur
                 return;
             }
-        
+
             try {
                 const results = await this.runSparqlRequest(query);
                 const triples = this.convertSparqlResultsToTriples(results);
-        
+
                 if (triples.length === 0) {
                     alert("Aucun triplet retourné.");
                     return;
                 }
-        
+
                 this.deleteGraph();
                 this.graph.triples = triples;
                 this.buildGraphFromTriples(triples);
-        
+
                 this.globalPredicates = new Set(this.graph.triples.map(t => t.predicate));
                 this.globalTypes = new Set(this.graph.nodes.map(n => n.type));
                 this.typeColorMap.clear();
                 this.predicateColorMap.clear();
-        
+
                 this.activePredicates = new Set(this.globalPredicates);
                 this.activeTypes.clear();
-        
+
                 this.extractActivePredicates();
                 this.extractActiveTypes();
                 this.updateStatistics();
                 this.renderGraph();
-        
+
             } catch (e) {
                 alert("Erreur lors de l'exécution SPARQL : " + e.message);
                 console.error(e);
             } finally {
                 loadingOverlay.style.display = 'none'; // cache l'animation quoi qu'il arrive
             }
-        });        
-        
+        });
+
 
         //Bouton expand pour le noeud selectionné
         document.getElementById('expandSparqlBtn').addEventListener('click', async () => {
@@ -354,14 +354,40 @@ class RdfExplorer {
             this.hiddenNodes.clear();
             this.renderGraph();
         });
-        
+
+        const resizeHandle = document.getElementById('resizeToolbar');
+        const toolbar = document.getElementById('toolbar');
+        let isResizing = false;
+
+        resizeHandle.addEventListener('mousedown', (e) => {
+            isResizing = true;
+            document.body.style.cursor = 'ew-resize';
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isResizing) return;
+            const containerRect = document.querySelector('.app-container').getBoundingClientRect();
+            const newWidth = containerRect.right - e.clientX;
+            if (newWidth >= 200 && newWidth <= 600) {  // bornes min / max
+                toolbar.style.width = `${newWidth}px`;
+                document.querySelector('.app-container').style.gridTemplateColumns = `280px 1fr ${newWidth}px`;
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            if (isResizing) {
+                isResizing = false;
+                document.body.style.cursor = '';
+            }
+        });
+
 
     }
 
     async loadRDFFile(file) {
         //Mode d'emploi : 
         // Charge un fichier RDF (.ttl), l’analyse et construit le graphe. Si un graphe était déjà présent, on le supprime
-    
+
         try {
             this.isSparqlGraph = false;
             this.updateExpandButtonState();
@@ -370,15 +396,15 @@ class RdfExplorer {
             const triples = await this.parseWithN3(content);
             this.graph.triples = triples;
             this.buildGraphFromTriples(triples);
-    
+
             this.globalPredicates = new Set(this.graph.triples.map(t => t.predicate));
             this.globalTypes = new Set(this.graph.nodes.map(n => n.type));
             this.typeColorMap.clear();
             this.predicateColorMap.clear();
-    
+
             this.activePredicates = new Set(this.globalPredicates);
             this.activeTypes.clear();
-    
+
             this.extractActivePredicates();
             this.extractActiveTypes();
             this.updateStatistics();
@@ -388,8 +414,8 @@ class RdfExplorer {
             alert('Erreur lors du chargement du fichier RDF: ' + error.message);
         }
     }
-    
-    
+
+
 
     readFileContent(file) {
         //Mode d'emploi : 
@@ -571,11 +597,11 @@ class RdfExplorer {
     extractActiveTypes() {
         //Mode d'emploi : 
         // Récupère tous les types de nœuds et génère les filtres associés
-    
+
         const typeSet = new Set(this.graph.nodes.map(n => n.type));
         const container = document.getElementById('rdfTypesCheckboxes');
         container.innerHTML = '';
-    
+
         typeSet.forEach(type => {
             this.globalTypes.add(type);
             if (!this.typeColorMap.has(type)) {
@@ -583,11 +609,11 @@ class RdfExplorer {
                 this.typeColorMap.set(type, this.colorPalette[index]);
             }
         });
-    
+
         this.globalTypes.forEach(type => {
             const id = `type-${type.replace(/[^a-zA-Z0-9]/g, '')}`;
             const checked = this.activeTypes.has(type);
-    
+
             const div = document.createElement('div');
             div.classList.add('checkbox-item');
             div.innerHTML = `
@@ -595,7 +621,7 @@ class RdfExplorer {
                 <label for="${id}">${type}</label>
             `;
             container.appendChild(div);
-    
+
             div.querySelector('input').addEventListener('change', (e) => {
                 if (e.target.checked) {
                     this.activeTypes.add(type);
@@ -606,7 +632,7 @@ class RdfExplorer {
             });
         });
     }
-    
+
 
     extractLabel(uri) {
         //Mode d'emploi : 
@@ -1234,7 +1260,7 @@ class RdfExplorer {
         try {
             const content = await file.text();
             const config = JSON.parse(content);
-    
+
             this.activePredicates = new Set(config.activePredicates || []);
             this.activeTypes = new Set(config.activeTypes || []);
             this.hideIsolatedNodes = !!config.hideIsolatedNodes;
@@ -1243,34 +1269,34 @@ class RdfExplorer {
             this.nodeSizeMode = config.nodeSizeMode || 'total';
             this.showEdgeLabels = !!config.showEdgeLabels;
             this.simulationPaused = !!config.simulationPaused;
-    
+
             this.globalPredicates = new Set(config.globalPredicates || []);
             this.globalTypes = new Set(config.globalTypes || []);
             this.typeColorMap = new Map(Object.entries(config.typeColorMap || {}));
             this.predicateColorMap = new Map(Object.entries(config.predicateColorMap || {}));
-    
+
             document.getElementById('showEdgeLabels').checked = this.showEdgeLabels;
             document.getElementById('hideIsolatedNodes').checked = this.hideIsolatedNodes;
-    
+
             const rangeInput = document.getElementById('degreeRangeInput');
             rangeInput.value = this.minDegreeFilter;
             document.getElementById('minDegreeValue').textContent = this.minDegreeFilter;
-    
+
             document.getElementById('nodeColorModeSelect').value = {
                 'type': 'Par type RDF',
                 'in': 'Par degré entrant',
                 'out': 'Par degré sortant',
                 'total': 'Par degré total'
             }[this.nodeColorMode];
-    
+
             document.getElementById('nodeSizeModeSelect').value = {
                 'in': 'Par degré entrant',
                 'out': 'Par degré sortant',
                 'total': 'Par degré total'
             }[this.nodeSizeMode];
-    
+
             this.renderGraph();
-    
+
             const toggle = document.getElementById('toggleSimulationBtn');
             if (this.simulationPaused) {
                 this.simulation.stop();
@@ -1279,12 +1305,12 @@ class RdfExplorer {
                 this.simulation.alpha(0.3);
                 if (toggle) toggle.textContent = '⏸️ Pause Simulation';
             }
-    
+
         } catch (e) {
             console.error('Erreur lors du chargement de la configuration:', e);
             alert('Erreur lors du chargement du fichier de configuration.');
         }
-    }    
+    }
 
     updateDepthSlider(maxDepth) {
         //Mode d'emploi : 
