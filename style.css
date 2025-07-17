@@ -88,6 +88,7 @@ body {
     border-left: 1px solid #e1e8ed;
     overflow-y: auto;
     box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
+    position: relative;
 }
 
 .panel {
@@ -285,4 +286,16 @@ body {
     to {
         transform: rotate(360deg);
     }
+}
+
+
+.resize-handle {
+    width: 8px;                   
+    cursor: ew-resize;
+    background: transparent;     
+    position: absolute;
+    left: -4px;                  
+    top: 0;
+    bottom: 0;
+    z-index: 10;                 
 }
