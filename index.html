@@ -139,6 +139,7 @@
 
                     <div class="form-group" style="margin-top: 15px;">
                         <label>Reinitialisation</label>
+                        <button id="resetNodesBtn" class="btn btn-secondary">🔄 Afficher les noeuds masqués</button>
                         <button id="resetGraphBtn" class="btn btn-secondary">🔄 Nettoyer le graphe</button>
                         <button id="deleteGraphBtn" class="btn btn-secondary">🔄 Supprimer le graphe</button>
                     </div>
@@ -159,7 +160,8 @@
         </main>
 
         <!-- Toolbar droite - Analyses -->
-        <aside class="toolbar">
+        <aside class="toolbar" id="toolbar">
+            <div class="resize-handle" id="resizeToolbar"></div>
             <!-- Informations sur le nœud sélectionné -->
             <div class="panel-content" id="selectedNodeInfo">
                 <div class="panel-header">ℹ️ Nœud sélectionné</div>
