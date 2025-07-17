@@ -68,6 +68,8 @@ class RdfExplorer {
         this.predicateColorMap = new Map();
         this.colorPalette = d3.schemeCategory10.concat(d3.schemeSet3);
 
+        //Clique droit pour supprimer les noeuds
+        this.hiddenNodes = new Set();
 
         //Demarrage de l'application
         this.init();
@@ -346,6 +348,13 @@ class RdfExplorer {
         document.getElementById('addAllNeighborsSparqlBtn').addEventListener('click', async () => {
             await this.addAllNeighborsOfSelectedNode();
         });
+
+        //Bouton pour remettre les noeuds invisibilisés
+        document.getElementById('resetNodesBtn').addEventListener('click', () => {
+            this.hiddenNodes.clear();
+            this.renderGraph();
+        });
+        
 
     }
 
