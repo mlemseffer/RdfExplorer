@@ -187,7 +187,12 @@
                         <textarea id="sparqlQueryInput" class="form-control" placeholder="Exemple: 
 SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100"></textarea>
                     </div>
-
+                    <div class="form-group">
+                        <label for="nodeSizeModeSelect"><br>🧾 Exemples</label>
+                        <select class="form-control" id="exampleSelect">
+                            <option>Trouver 100 noeuds</option>
+                        </select>
+                    </div>
                     <button id="runSparqlBtn" class="btn btn-secondary">▶️ Exécuter</button>
                     <div class="form-group">
                         <label for="expandLimitRange">Nombre de triplets à ajouter : <span
@@ -274,6 +279,7 @@ SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100"></textarea>
                             <option>Par degré entrant</option>
                             <option>Par degré sortant</option>
                             <option>Par degré total</option>
+                            <option>Fixe (même taille)</option>
                         </select>
                     </div>
 
