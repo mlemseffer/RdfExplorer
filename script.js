@@ -720,7 +720,8 @@ class RdfExplorer {
             const passesDegree = totalDegree >= this.minDegreeFilter;
             const isVisibleType = this.activeTypes ? this.activeTypes.has(n.type) : true;
             const isAnchorNode = anchorNodeId && n.id === anchorNodeId;
-            return (passesDegree && isVisibleType) || isAnchorNode;
+            const isNotHidden = !this.hiddenNodes.has(n.id);
+            return ((passesDegree && isVisibleType) || isAnchorNode) && isNotHidden;
         });
     
         const candidateNodeIds = new Set(nodeCandidates.map(n => n.id));
@@ -743,8 +744,6 @@ class RdfExplorer {
             return (!this.hideIsolatedNodes || usedNodeIds.has(n.id)) || (anchorNodeId && n.id === anchorNodeId);
         });
     
-        const visibleNodeIds = new Set(visibleNodes.map(n => n.id));
-    
         this.visibleNodes = visibleNodes;
         this.visibleLinks = visibleLinks;
     
@@ -759,7 +758,7 @@ class RdfExplorer {
         };
     
         const sizeScale = this.nodeSizeMode === 'fixed'
-            ? () => 12  // Taille fixe souhaitée
+            ? () => 12
             : d3.scaleLinear()
                 .domain(d3.extent(sourceNodes, sizeAccessor))
                 .range([8, 30]);
@@ -819,6 +818,12 @@ class RdfExplorer {
             .attr('stroke-width', d => {
                 if (d === this.startNode || d === this.endNode) return 4;
                 return 2;
+            })
+            .on('click', (event, d) => this.selectNode(d))
+            .on('contextmenu', (event, d) => {
+                event.preventDefault();
+                this.hiddenNodes.add(d.id);
+                this.renderGraph();
             });
     
         const labelsGroup = this.svg.select('.zoom-group .nodes');
@@ -836,8 +841,6 @@ class RdfExplorer {
                 .style('fill', 'black')
                 .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.7)');
         }
-    
-        node.on('click', (event, d) => this.selectNode(d));
     
         this.simulation.on('tick', () => {
             link
@@ -868,9 +871,7 @@ class RdfExplorer {
     
         this.updateNodeColors();
         this.updateEdgeColors();
-    }
-    
-
+    }    
 
     selectNode(node) {
         //Mode d'emploi : 
