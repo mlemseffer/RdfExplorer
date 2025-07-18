@@ -840,7 +840,12 @@ class RdfExplorer {
             .selectAll('circle')
             .data(visibleNodes)
             .enter().append('circle')
-            .attr('r', d => this.nodeSizeMode === 'fixed' ? sizeScale() : sizeScale(sizeAccessor(d)))
+            .attr('r', d => {
+                //AUGMENTATION DU NOEUD D’ORIGINE
+                const baseSize = this.nodeSizeMode === 'fixed' ? sizeScale() : sizeScale(sizeAccessor(d));
+                if (this.isSubgraphMode && d === this.subgraphRootNode) return baseSize * 5.0;
+                return baseSize;
+            })
             .style('cursor', 'pointer')
             .call(d3.drag()
                 .on('start', (event, d) => this.dragstarted(event, d))
@@ -860,7 +865,7 @@ class RdfExplorer {
                 event.preventDefault();
                 this.hiddenNodes.add(d.id);
                 this.hideNodeInView(d.id);
-            });            
+            });
     
         const labelsGroup = this.svg.select('.zoom-group .nodes');
         labelsGroup.selectAll('text').remove();
