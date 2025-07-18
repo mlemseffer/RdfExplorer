@@ -359,7 +359,7 @@ class RdfExplorer {
         const toolbar = document.getElementById('toolbar');
         let isResizing = false;
 
-        resizeHandle.addEventListener('mousedown', (e) => {
+        resizeHandle.addEventListener('mousedown', () => {
             isResizing = true;
             document.body.style.cursor = 'ew-resize';
         });
@@ -368,9 +368,10 @@ class RdfExplorer {
             if (!isResizing) return;
             const containerRect = document.querySelector('.app-container').getBoundingClientRect();
             const newWidth = containerRect.right - e.clientX;
-            if (newWidth >= 200 && newWidth <= 600) {  // bornes min / max
+            if (newWidth >= 200 && newWidth <= 600) {
                 toolbar.style.width = `${newWidth}px`;
                 document.querySelector('.app-container').style.gridTemplateColumns = `280px 1fr ${newWidth}px`;
+                resizeHandle.style.left = `${containerRect.width - newWidth - 8}px`; // met à jour la position à gauche
             }
         });
 
@@ -380,7 +381,6 @@ class RdfExplorer {
                 document.body.style.cursor = '';
             }
         });
-
 
     }
 
