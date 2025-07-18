@@ -823,8 +823,8 @@ class RdfExplorer {
             .on('contextmenu', (event, d) => {
                 event.preventDefault();
                 this.hiddenNodes.add(d.id);
-                this.renderGraph();
-            });
+                this.hideNodeInView(d.id);
+            });            
     
         const labelsGroup = this.svg.select('.zoom-group .nodes');
         labelsGroup.selectAll('text').remove();
@@ -2077,21 +2077,29 @@ class RdfExplorer {
     updateExpandButtonState() {
         const expandBtn = document.getElementById('expandSparqlBtn');
         const expandFilterBtn = document.getElementById('expandFilterSparqlBtn');
-
+        const addAllNeighborsBtn = document.getElementById('addAllNeighborsSparqlBtn'); // AJOUT
+    
         if (this.isSparqlGraph) {
             expandBtn.disabled = false;
             expandBtn.classList.remove('disabled-button');
-
+    
             expandFilterBtn.disabled = false;
             expandFilterBtn.classList.remove('disabled-button');
+    
+            addAllNeighborsBtn.disabled = false; // AJOUT
+            addAllNeighborsBtn.classList.remove('disabled-button'); // AJOUT
         } else {
             expandBtn.disabled = true;
             expandBtn.classList.add('disabled-button');
-
+    
             expandFilterBtn.disabled = true;
             expandFilterBtn.classList.add('disabled-button');
+    
+            addAllNeighborsBtn.disabled = true; // AJOUT
+            addAllNeighborsBtn.classList.add('disabled-button'); // AJOUT
         }
     }
+    
 
 
     async expandAndFilterSelectedNode() {
@@ -2220,6 +2228,41 @@ class RdfExplorer {
             console.error(e);
         }
     }
+
+    hideNodeInView(nodeId) {
+        // Cache le cercle du nœud
+        this.svg.selectAll('.nodes circle')
+            .filter(n => n.id === nodeId)
+            .attr('visibility', 'hidden');
+    
+        // Cache le label du nœud s’il est affiché
+        this.svg.selectAll('.nodes text')
+            .filter(n => n.id === nodeId)
+            .attr('visibility', 'hidden');
+    
+        // Cache les arêtes associées
+        this.svg.selectAll('.zoom-group .links line')
+            .filter(l => {
+                const src = typeof l.source === 'object' ? l.source.id : l.source;
+                const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+                return src === nodeId || tgt === nodeId;
+            })
+            .attr('visibility', 'hidden');
+    
+        // Cache les labels des arêtes si activés
+        this.svg.selectAll('.zoom-group .links text')
+            .filter(l => {
+                const src = typeof l.source === 'object' ? l.source.id : l.source;
+                const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+                return src === nodeId || tgt === nodeId;
+            })
+            .attr('visibility', 'hidden');
+    
+        // Met à jour le compteur affiché
+        const remainingNodes = this.visibleNodes.filter(n => !this.hiddenNodes.has(n.id)).length;
+        const overlay = document.getElementById('graphOverlay');
+        overlay.innerHTML = `📊 Graphe: ${remainingNodes} nœuds • ${this.visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
+    }    
 
 }
 
