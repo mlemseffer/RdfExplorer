@@ -51,7 +51,6 @@ class RdfExplorer {
 
 
         //Optimisation
-
         this.nodeMap = new Map();
         this.adjList = new Map();
         this.revAdjList = new Map();
@@ -99,7 +98,10 @@ class RdfExplorer {
                 { label: "Arrondissements et code INSEE", query: "PREFIX geo: <http://rdf.insee.fr/def/geo#> SELECT ?s ?p ?o WHERE { ?s geo:codeINSEE ?o . BIND(geo:codeINSEE AS ?p) } LIMIT 100" }
             ]
         };
-        
+
+        //Arbre
+        this.isTreeMode = false;
+        this.treeData = null;
 
         //Demarrage de l'application
         this.init();
@@ -417,8 +419,74 @@ class RdfExplorer {
         document.getElementById('endpointInput').addEventListener('change', () => {
             this.updateExampleSelect();
         });
-        
 
+        //Bouton pour l'arbre
+        const treeBtn = document.getElementById('TreeGraphBtn');
+        treeBtn.addEventListener('click', () => {
+            if (!this.isTreeMode) {
+                // Supprime seulement le SVG
+                d3.select('#graphContainer svg').remove();
+
+                if (!this.startNode) {
+                    alert("Veuillez sélectionner un nœud de départ.");
+                    return;
+                }
+
+                const mstEdges = this.computeMinimalSpanningTree();
+                this.treeData = this.buildHierarchyFromEdges(mstEdges, this.startNode.id);
+                this.renderTreeWithFilters(this.treeData);
+
+                this.isTreeMode = true;
+                treeBtn.textContent = '🕸️ Revenir au graphe';
+            } else {
+                // Supprime uniquement le SVG
+                d3.select('#graphContainer svg').remove();
+
+                // Vérifie et recrée les overlays si besoin
+                if (!document.getElementById('graphOverlay')) {
+                    const graphOverlay = document.createElement('div');
+                    graphOverlay.id = 'graphOverlay';
+                    graphOverlay.className = 'graph-overlay';
+                    graphOverlay.innerHTML = `📊 Graphe: 0 nœuds • 0 arêtes • <span id="zoom">Zoom : 100%</span>`;
+                    document.getElementById('graphContainer').appendChild(graphOverlay);
+                }
+
+                if (!document.getElementById('loadingOverlay')) {
+                    const loadingOverlay = document.createElement('div');
+                    loadingOverlay.id = 'loadingOverlay';
+                    loadingOverlay.className = 'loading-overlay';
+                    loadingOverlay.style.display = 'none';
+                    loadingOverlay.innerHTML = `<div class="spinner"></div>`;
+                    document.getElementById('graphContainer').appendChild(loadingOverlay);
+                }
+
+                // Recrée le canevas SVG
+                this.svg = d3.select('#graphContainer')
+                    .append('svg')
+                    .attr('width', '100%')
+                    .attr('height', '100%')
+                    .call(
+                        d3.zoom()
+                            .scaleExtent([0.05, 5])
+                            .on('zoom', (event) => {
+                                this.svg.select('g.zoom-group').attr('transform', event.transform);
+                                this.updateZoomLabel(event.transform.k);
+                                this.updateMiniMap(this.visibleNodes, this.visibleLinks);
+                            })
+                    )
+                    .style('background', 'radial-gradient(circle at 50% 50%, #fafbfc 0%, #f4f6f8 100%)');
+
+                this.svg.append('g').attr('class', 'zoom-group');
+                this.svg.select('.zoom-group').append('g').attr('class', 'links');
+                this.svg.select('.zoom-group').append('g').attr('class', 'nodes');
+
+                this.renderGraph();
+
+                this.isTreeMode = false;
+                treeBtn.textContent = '🌲 Afficher l\'arbre';
+            }
+
+        });
     }
 
     async loadRDFFile(file) {
@@ -591,12 +659,11 @@ class RdfExplorer {
 
 
     extractActivePredicates() {
-        //Mode d'emploi : 
-        // Récupère tous les prédicats et génère leurs filtres dans l’interface
-
         const predicateSet = new Set(this.graph.triples.map(t => t.predicate));
         const container = document.getElementById('predicatePanelContent');
         const group = document.getElementById('predicateCheckboxes');
+        if (!container || !group) return;
+
         group.innerHTML = '';
 
         predicateSet.forEach(pred => {
@@ -615,9 +682,9 @@ class RdfExplorer {
             const div = document.createElement('div');
             div.classList.add('checkbox-item');
             div.innerHTML = `
-            <input type="checkbox" id="${id}" ${checked ? 'checked' : ''}>
-            <label for="${id}">${this.extractLabel(pred)}</label>
-        `;
+                <input type="checkbox" id="${id}" ${checked ? 'checked' : ''}>
+                <label for="${id}">${this.extractLabel(pred)}</label>
+            `;
             group.appendChild(div);
 
             div.querySelector('input').addEventListener('change', (e) => {
@@ -627,16 +694,21 @@ class RdfExplorer {
                     this.activePredicates.delete(pred);
                 }
                 this.renderGraph();
+
+                if (this.isTreeMode && this.treeData) {
+                    const mstEdges = this.computeMinimalSpanningTree();
+                    this.treeData = this.buildHierarchyFromEdges(mstEdges, this.startNode.id);
+                    this.renderTreeWithFilters(this.treeData);
+                }
             });
         });
     }
 
     extractActiveTypes() {
-        //Mode d'emploi : 
-        // Récupère tous les types de nœuds et génère les filtres associés
-
         const typeSet = new Set(this.graph.nodes.map(n => n.type));
         const container = document.getElementById('rdfTypesCheckboxes');
+        if (!container) return;
+
         container.innerHTML = '';
 
         typeSet.forEach(type => {
@@ -666,10 +738,15 @@ class RdfExplorer {
                     this.activeTypes.delete(type);
                 }
                 this.renderGraph();
+
+                if (this.isTreeMode && this.treeData) {
+                    const mstEdges = this.computeMinimalSpanningTree();
+                    this.treeData = this.buildHierarchyFromEdges(mstEdges, this.startNode.id);
+                    this.renderTreeWithFilters(this.treeData);
+                }
             });
         });
     }
-
 
     extractLabel(uri) {
         //Mode d'emploi : 
@@ -737,7 +814,7 @@ class RdfExplorer {
 
     renderGraph() {
         if (!this.svg) return;
-    
+
         let sourceNodes, sourceLinks;
         if (this.isSubgraphMode) {
             sourceNodes = this.subgraphNodes;
@@ -746,11 +823,11 @@ class RdfExplorer {
             sourceNodes = this.graph.nodes;
             sourceLinks = this.graph.links;
         }
-    
+
         const predicateFilteredLinks = sourceLinks.filter(l => this.activePredicates.has(l.predicate));
-    
+
         const anchorNodeId = this.isSubgraphMode && this.subgraphRootNode ? this.subgraphRootNode.id : (this.startNode ? this.startNode.id : null);
-    
+
         const nodeCandidates = sourceNodes.filter(n => {
             const totalDegree = n.inDegree + n.outDegree;
             const passesDegree = totalDegree >= this.minDegreeFilter;
@@ -759,15 +836,15 @@ class RdfExplorer {
             const isNotHidden = !this.hiddenNodes.has(n.id);
             return ((passesDegree && isVisibleType) || isAnchorNode) && isNotHidden;
         });
-    
+
         const candidateNodeIds = new Set(nodeCandidates.map(n => n.id));
-    
+
         const visibleLinks = predicateFilteredLinks.filter(l => {
             const src = typeof l.source === 'object' ? l.source.id : l.source;
             const tgt = typeof l.target === 'object' ? l.target.id : l.target;
             return candidateNodeIds.has(src) && candidateNodeIds.has(tgt);
         });
-    
+
         const usedNodeIds = new Set();
         visibleLinks.forEach(link => {
             const src = typeof link.source === 'object' ? link.source.id : link.source;
@@ -775,35 +852,35 @@ class RdfExplorer {
             usedNodeIds.add(src);
             usedNodeIds.add(tgt);
         });
-    
+
         const visibleNodes = nodeCandidates.filter(n => {
             return (!this.hideIsolatedNodes || usedNodeIds.has(n.id)) || (anchorNodeId && n.id === anchorNodeId);
         });
-    
+
         this.visibleNodes = visibleNodes;
         this.visibleLinks = visibleLinks;
-    
+
         const width = this.svg.node().getBoundingClientRect().width;
         const height = this.svg.node().getBoundingClientRect().height;
-    
+
         const sizeAccessor = d => {
             if (this.nodeSizeMode === 'fixed') return 1;
             if (this.nodeSizeMode === 'in') return d.inDegree;
             if (this.nodeSizeMode === 'out') return d.outDegree;
             return d.inDegree + d.outDegree;
         };
-    
+
         const sizeScale = this.nodeSizeMode === 'fixed'
             ? () => 12
             : d3.scaleLinear()
                 .domain(d3.extent(sourceNodes, sizeAccessor))
                 .range([8, 30]);
-    
+
         this.simulation = d3.forceSimulation(visibleNodes)
             .force('link', d3.forceLink(visibleLinks).id(d => d.id).distance(100))
             .force('charge', d3.forceManyBody().strength(this.gravityForce))
             .force('center', d3.forceCenter(width / 2, height / 2));
-    
+
         const pauseBtn = document.getElementById('toggleSimulationBtn');
         if (this.simulationPaused) {
             this.simulation.stop();
@@ -812,10 +889,10 @@ class RdfExplorer {
             this.simulation.alpha(0.3).restart();
             if (pauseBtn) pauseBtn.textContent = '⏸️ Pause Simulation';
         }
-    
+
         this.svg.selectAll('.links > *').remove();
         this.svg.selectAll('.nodes > *').remove();
-    
+
         const link = this.svg.select('.zoom-group .links')
             .selectAll('line')
             .data(visibleLinks)
@@ -823,7 +900,7 @@ class RdfExplorer {
             .attr('stroke', '#9ca3af')
             .attr('stroke-width', 2)
             .attr('stroke-opacity', 0.7);
-    
+
         if (this.showEdgeLabels) {
             this.svg.select('.zoom-group .links')
                 .selectAll('text')
@@ -835,7 +912,7 @@ class RdfExplorer {
                 .style('fill', '#666')
                 .style('pointer-events', 'none');
         }
-    
+
         const node = this.svg.select('.zoom-group .nodes')
             .selectAll('circle')
             .data(visibleNodes)
@@ -866,7 +943,7 @@ class RdfExplorer {
                 this.hiddenNodes.add(d.id);
                 this.hideNodeInView(d.id);
             });
-    
+
         const labelsGroup = this.svg.select('.zoom-group .nodes');
         labelsGroup.selectAll('text').remove();
         if (this.showNodeLabels) {
@@ -882,37 +959,40 @@ class RdfExplorer {
                 .style('fill', 'black')
                 .style('text-shadow', '1px 1px 2px rgba(0,0,0,0.7)');
         }
-    
+
         this.simulation.on('tick', () => {
             link
                 .attr('x1', d => d.source.x)
                 .attr('y1', d => d.source.y)
                 .attr('x2', d => d.target.x)
                 .attr('y2', d => d.target.y);
-    
+
             this.svg.selectAll('.zoom-group .links text')
                 .attr('x', d => (d.source.x + d.target.x) / 2)
                 .attr('y', d => (d.source.y + d.target.y) / 2);
-    
+
             node
                 .attr('cx', d => d.x)
                 .attr('cy', d => d.y);
-    
+
             if (this.showNodeLabels) {
                 this.svg.selectAll('.zoom-group .nodes text')
                     .attr('x', d => d.x)
                     .attr('y', d => d.y);
             }
-    
+
             this.updateMiniMap(visibleNodes, visibleLinks);
         });
-    
+
         const overlay = document.getElementById('graphOverlay');
-        overlay.innerHTML = `📊 Graphe: ${visibleNodes.length} nœuds • ${visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
-    
+        if (overlay) {
+            overlay.innerHTML = `📊 Graphe: ${visibleNodes.length} nœuds • ${visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
+        }
+
+
         this.updateNodeColors();
         this.updateEdgeColors();
-    }    
+    }
 
     selectNode(node) {
         //Mode d'emploi : 
@@ -2119,28 +2199,28 @@ class RdfExplorer {
         const expandBtn = document.getElementById('expandSparqlBtn');
         const expandFilterBtn = document.getElementById('expandFilterSparqlBtn');
         const addAllNeighborsBtn = document.getElementById('addAllNeighborsSparqlBtn'); // AJOUT
-    
+
         if (this.isSparqlGraph) {
             expandBtn.disabled = false;
             expandBtn.classList.remove('disabled-button');
-    
+
             expandFilterBtn.disabled = false;
             expandFilterBtn.classList.remove('disabled-button');
-    
+
             addAllNeighborsBtn.disabled = false; // AJOUT
             addAllNeighborsBtn.classList.remove('disabled-button'); // AJOUT
         } else {
             expandBtn.disabled = true;
             expandBtn.classList.add('disabled-button');
-    
+
             expandFilterBtn.disabled = true;
             expandFilterBtn.classList.add('disabled-button');
-    
+
             addAllNeighborsBtn.disabled = true; // AJOUT
             addAllNeighborsBtn.classList.add('disabled-button'); // AJOUT
         }
     }
-    
+
 
 
     async expandAndFilterSelectedNode() {
@@ -2275,12 +2355,12 @@ class RdfExplorer {
         this.svg.selectAll('.nodes circle')
             .filter(n => n.id === nodeId)
             .attr('visibility', 'hidden');
-    
+
         // Cache le label du nœud s’il est affiché
         this.svg.selectAll('.nodes text')
             .filter(n => n.id === nodeId)
             .attr('visibility', 'hidden');
-    
+
         // Cache les arêtes associées
         this.svg.selectAll('.zoom-group .links line')
             .filter(l => {
@@ -2289,7 +2369,7 @@ class RdfExplorer {
                 return src === nodeId || tgt === nodeId;
             })
             .attr('visibility', 'hidden');
-    
+
         // Cache les labels des arêtes si activés
         this.svg.selectAll('.zoom-group .links text')
             .filter(l => {
@@ -2298,21 +2378,21 @@ class RdfExplorer {
                 return src === nodeId || tgt === nodeId;
             })
             .attr('visibility', 'hidden');
-    
+
         // Met à jour le compteur affiché
         const remainingNodes = this.visibleNodes.filter(n => !this.hiddenNodes.has(n.id)).length;
         const overlay = document.getElementById('graphOverlay');
         overlay.innerHTML = `📊 Graphe: ${remainingNodes} nœuds • ${this.visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
-    }    
+    }
 
     updateExampleSelect() {
         const endpoint = document.getElementById('endpointInput').value;
         const examples = this.exampleQueries[endpoint] || [];
         const exampleSelect = document.getElementById('exampleSelect');
-        
+
         // Nettoyer
         exampleSelect.innerHTML = '';
-    
+
         // Remplir les nouvelles options
         examples.forEach((ex, index) => {
             const option = document.createElement('option');
@@ -2320,7 +2400,7 @@ class RdfExplorer {
             option.textContent = ex.label;
             exampleSelect.appendChild(option);
         });
-    
+
         // Remplir automatiquement la zone de texte au changement de sélection
         exampleSelect.addEventListener('change', () => {
             const selected = examples[exampleSelect.value];
@@ -2328,7 +2408,7 @@ class RdfExplorer {
                 document.getElementById('sparqlQueryInput').value = selected.query;
             }
         });
-    
+
         // Préremplir avec le premier exemple si dispo
         if (examples.length > 0) {
             exampleSelect.selectedIndex = 0;
@@ -2337,7 +2417,287 @@ class RdfExplorer {
             document.getElementById('sparqlQueryInput').value = '';
         }
     }
-    
+
+    computeMinimalSpanningTree() {
+        if (!this.startNode) {
+            alert("Veuillez sélectionner un nœud de départ.");
+            return [];
+        }
+
+        const maxDepth = parseInt(document.getElementById('depthRange').value);
+        const direction = this.exploreDirectionSelect.value;
+
+        const filteredNodeIds = new Set(this.graph.nodes
+            .filter(n => (this.activeTypes.size === 0 || this.activeTypes.has(n.type)) || n.id === this.startNode.id)
+            .filter(n => !this.hiddenNodes.has(n.id))
+            .filter(n => (n.inDegree + n.outDegree) >= this.minDegreeFilter || n.id === this.startNode.id)
+            .map(n => n.id));
+
+        const filteredLinks = this.graph.links.filter(l => {
+            const src = typeof l.source === 'object' ? l.source.id : l.source;
+            const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+            return filteredNodeIds.has(src) &&
+                filteredNodeIds.has(tgt) &&
+                this.activePredicates.has(l.predicate);
+        });
+
+        const visited = new Set([this.startNode.id]);
+        const mstEdges = [];
+        const queue = [{ id: this.startNode.id, depth: 0 }];
+
+        while (queue.length > 0) {
+            const { id, depth } = queue.shift();
+            if (depth >= maxDepth) continue;
+
+            // Entrantes
+            if (direction === "Entrantes" || direction === "Entrantes + Sortantes") {
+                if (this.revAdjList.has(id)) {
+                    for (const neighborId of this.revAdjList.get(id)) {
+                        if (!visited.has(neighborId) && filteredNodeIds.has(neighborId)) {
+                            const link = filteredLinks.find(l => {
+                                const src = typeof l.source === 'object' ? l.source.id : l.source;
+                                const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+                                return src === neighborId && tgt === id;
+                            });
+                            if (link) {
+                                mstEdges.push(link);
+                                visited.add(neighborId);
+                                queue.push({ id: neighborId, depth: depth + 1 });
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Sortantes
+            if (direction === "Sortantes" || direction === "Entrantes + Sortantes") {
+                if (this.adjList.has(id)) {
+                    for (const neighborId of this.adjList.get(id)) {
+                        if (!visited.has(neighborId) && filteredNodeIds.has(neighborId)) {
+                            const link = filteredLinks.find(l => {
+                                const src = typeof l.source === 'object' ? l.source.id : l.source;
+                                const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+                                return src === id && tgt === neighborId;
+                            });
+                            if (link) {
+                                mstEdges.push(link);
+                                visited.add(neighborId);
+                                queue.push({ id: neighborId, depth: depth + 1 });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return mstEdges;
+    }
+
+
+    buildHierarchyFromEdges(edges, rootId) {
+        const childMap = new Map();
+        const parentMap = new Map();
+
+        edges.forEach(e => {
+            const src = typeof e.source === 'object' ? e.source.id : e.source;
+            const tgt = typeof e.target === 'object' ? e.target.id : e.target;
+
+            if (!childMap.has(src)) childMap.set(src, new Set());
+            childMap.get(src).add(tgt);
+
+            if (!parentMap.has(tgt)) parentMap.set(tgt, new Set());
+            parentMap.get(tgt).add(src);
+        });
+
+        const visited = new Set();
+
+        const build = (nodeId) => {
+            if (visited.has(nodeId)) return null;
+            visited.add(nodeId);
+
+            const children = [];
+
+            if (childMap.has(nodeId)) {
+                for (const childId of childMap.get(nodeId)) {
+                    const childNode = build(childId);
+                    if (childNode) children.push(childNode);
+                }
+            }
+
+            if (parentMap.has(nodeId)) {
+                for (const parentId of parentMap.get(nodeId)) {
+                    const parentNode = build(parentId);
+                    if (parentNode) children.push(parentNode);
+                }
+            }
+
+            const nodeObj = this.nodeMap.get(nodeId);
+            return {
+                name: this.extractLabel(nodeId),
+                id: nodeId,
+                type: nodeObj?.type || 'unknown',
+                inDegree: nodeObj?.inDegree || 0,
+                outDegree: nodeObj?.outDegree || 0,
+                children
+            };
+        };
+
+        return build(rootId);
+    }
+
+    buildHierarchyFromStartNodeAll(startNodeId, maxDepth = 3) {
+        const visited = new Set();
+
+        const recurse = (nodeId, depth) => {
+            if (depth > maxDepth || visited.has(nodeId)) return null;
+            visited.add(nodeId);
+
+            const outgoing = (this.adjList.get(nodeId) || []);
+            const incoming = (this.revAdjList.get(nodeId) || []);
+            const neighbors = [...new Set([...outgoing, ...incoming])];
+
+            const children = neighbors
+                .map(childId => recurse(childId, depth + 1))
+                .filter(child => child !== null);
+
+            const nodeObj = this.nodeMap.get(nodeId);
+            return {
+                name: this.extractLabel(nodeId),
+                id: nodeId,
+                type: nodeObj?.type || 'unknown',
+                inDegree: nodeObj?.inDegree || 0,
+                outDegree: nodeObj?.outDegree || 0,
+                children
+            };
+        };
+
+        return recurse(startNodeId, 0);
+    }
+
+    renderTreeWithFilters(hierarchyData) {
+        const applyFilters = (node) => {
+            const isStartNode = node.id === this.startNode?.id;
+            const isHidden = this.hiddenNodes.has(node.id);
+            const passesType = this.activeTypes.size === 0 || this.activeTypes.has(node.type);
+
+            if (isHidden) {
+                return null;
+            }
+
+            const filteredChildren = node.children
+                .map(child => applyFilters(child))
+                .filter(child => child !== null);
+
+            if (isStartNode) {
+                return {
+                    ...node,
+                    children: filteredChildren
+                };
+            }
+
+            if (!passesType) {
+                return null;
+            }
+
+            return {
+                ...node,
+                children: filteredChildren
+            };
+        };
+
+        const filteredHierarchy = applyFilters(hierarchyData);
+        if (!filteredHierarchy) {
+            alert("Aucun nœud à afficher avec les filtres actuels.");
+            return;
+        }
+
+        this.renderTree(filteredHierarchy);
+    }
+
+    renderTree(hierarchyData) {
+        // Mode d'emploi :
+        // Rend l'arbre hiérarchique en ajustant la hauteur pour éviter les chevauchements
+
+        d3.select("#graphContainer").selectAll("*").remove();
+
+        const container = document.getElementById('graphContainer');
+        const width = container.getBoundingClientRect().width;
+        const height = container.getBoundingClientRect().height;
+
+        const root = d3.hierarchy(hierarchyData);
+        const nodeCount = root.descendants().length;
+        const minSpacing = 40;
+        const neededHeight = Math.max(height, nodeCount * minSpacing);
+
+        this.svg = d3.select("#graphContainer")
+            .append("svg")
+            .attr("width", width)
+            .attr("height", neededHeight + 100)
+            .call(
+                d3.zoom()
+                    .scaleExtent([0.05, 5])
+                    .on('zoom', (event) => {
+                        this.svg.select('g.zoom-group').attr('transform', event.transform);
+                        this.updateZoomLabel(event.transform.k);
+                        this.updateMiniMap(this.visibleNodes, this.visibleLinks);
+                    })
+            );
+
+        this.svg.append('g').attr('class', 'zoom-group')
+            .attr('transform', 'translate(50,50)');
+
+        const treeLayout = d3.tree().size([neededHeight, width - 100]);
+        treeLayout(root);
+
+        const colorScale = this.getColorScale();
+        const sizeAccessor = d => {
+            if (this.nodeSizeMode === 'fixed') return 1;
+            if (this.nodeSizeMode === 'in') return d.inDegree;
+            if (this.nodeSizeMode === 'out') return d.outDegree;
+            return d.inDegree + d.outDegree;
+        };
+        const sizeScale = this.nodeSizeMode === 'fixed'
+            ? () => 12
+            : d3.scaleLinear()
+                .domain(d3.extent(this.graph.nodes, sizeAccessor))
+                .range([8, 30]);
+
+        this.svg.select('.zoom-group').selectAll('line')
+            .data(root.links())
+            .enter()
+            .append('line')
+            .attr('x1', d => d.source.y)
+            .attr('y1', d => d.source.x)
+            .attr('x2', d => d.target.y)
+            .attr('y2', d => d.target.x)
+            .attr('stroke', '#9ca3af')
+            .attr('stroke-width', 2);
+
+        this.svg.select('.zoom-group').selectAll('circle')
+            .data(root.descendants())
+            .enter()
+            .append('circle')
+            .attr('cx', d => d.y)
+            .attr('cy', d => d.x)
+            .attr('r', d => sizeScale(sizeAccessor(d.data)))
+            .attr('fill', d => {
+                if (this.nodeColorMode === 'type') return this.typeColorMap.get(d.data.type) || '#ccc';
+                if (this.nodeColorMode === 'in') return colorScale(d.data.inDegree);
+                if (this.nodeColorMode === 'out') return colorScale(d.data.outDegree);
+                return colorScale(d.data.inDegree + d.data.outDegree);
+            })
+            .attr('stroke', 'white')
+            .attr('stroke-width', 2);
+
+        this.svg.select('.zoom-group').selectAll('text')
+            .data(root.descendants())
+            .enter()
+            .append('text')
+            .attr('x', d => d.y + 8)
+            .attr('y', d => d.x + 4)
+            .text(d => d.data.name)
+            .attr('font-size', '10px');
+    }
 
 }
 
