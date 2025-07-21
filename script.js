@@ -423,8 +423,18 @@ class RdfExplorer {
         //Bouton pour l'arbre
         const treeBtn = document.getElementById('TreeGraphBtn');
         treeBtn.addEventListener('click', () => {
+            const depthExploreBtn = document.getElementById('depthExploreBtn');
+            const subGraphBtn = document.getElementById('SubGraphBtn');
+
             if (!this.isTreeMode) {
-                // Supprime seulement le SVG
+                // ➤ MODE ARBRE : stopper la simulation
+                if (this.simulation) {
+                    this.simulation.stop();
+                    this.simulationPaused = true;
+                    const pauseBtn = document.getElementById('toggleSimulationBtn');
+                    if (pauseBtn) pauseBtn.textContent = '▶️ Reprendre Simulation';
+                }
+
                 d3.select('#graphContainer svg').remove();
 
                 if (!this.startNode) {
@@ -438,11 +448,16 @@ class RdfExplorer {
 
                 this.isTreeMode = true;
                 treeBtn.textContent = '🕸️ Revenir au graphe';
+
+                // Désactiver les boutons en mode arbre
+                depthExploreBtn.disabled = true;
+                subGraphBtn.disabled = true;
+                depthExploreBtn.classList.add('disabled-button');
+                subGraphBtn.classList.add('disabled-button');
+
             } else {
-                // Supprime uniquement le SVG
                 d3.select('#graphContainer svg').remove();
 
-                // Vérifie et recrée les overlays si besoin
                 if (!document.getElementById('graphOverlay')) {
                     const graphOverlay = document.createElement('div');
                     graphOverlay.id = 'graphOverlay';
@@ -460,7 +475,6 @@ class RdfExplorer {
                     document.getElementById('graphContainer').appendChild(loadingOverlay);
                 }
 
-                // Recrée le canevas SVG
                 this.svg = d3.select('#graphContainer')
                     .append('svg')
                     .attr('width', '100%')
@@ -480,12 +494,24 @@ class RdfExplorer {
                 this.svg.select('.zoom-group').append('g').attr('class', 'links');
                 this.svg.select('.zoom-group').append('g').attr('class', 'nodes');
 
-                this.renderGraph();
-
                 this.isTreeMode = false;
-                treeBtn.textContent = '🌲 Afficher l\'arbre';
-            }
 
+                this.renderGraph();
+                treeBtn.textContent = '🌲 Afficher l\'arbre';
+
+                if (this.simulation) {
+                    this.simulation.alpha(0.3).restart();
+                    this.simulationPaused = false;
+                    const pauseBtn = document.getElementById('toggleSimulationBtn');
+                    if (pauseBtn) pauseBtn.textContent = '⏸️ Pause Simulation';
+                }
+
+                // Réactiver les boutons en mode graphe
+                depthExploreBtn.disabled = false;
+                subGraphBtn.disabled = false;
+                depthExploreBtn.classList.remove('disabled-button');
+                subGraphBtn.classList.remove('disabled-button');
+            }
         });
     }
 
@@ -814,6 +840,10 @@ class RdfExplorer {
 
     renderGraph() {
         if (!this.svg) return;
+
+        if (this.isTreeMode) {
+            return;
+        }
 
         let sourceNodes, sourceLinks;
         if (this.isSubgraphMode) {
