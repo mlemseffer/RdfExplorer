@@ -2552,7 +2552,7 @@ class RdfExplorer {
                 for (const { id: childId, predicate } of childMap.get(nodeId)) {
                     const childNode = build(childId);
                     if (childNode) {
-                        childNode.predicateFromParent = predicate; // 🔥 ajouter le prédicat
+                        childNode.predicateFromParent = predicate;
                         children.push(childNode);
                     }
                 }
@@ -2563,7 +2563,7 @@ class RdfExplorer {
                 for (const { id: parentId, predicate } of parentMap.get(nodeId)) {
                     const parentNode = build(parentId);
                     if (parentNode) {
-                        parentNode.predicateFromParent = predicate; // 🔥 ajouter le prédicat
+                        parentNode.predicateFromParent = predicate;
                         children.push(parentNode);
                     }
                 }
