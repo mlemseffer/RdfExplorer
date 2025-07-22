@@ -2527,40 +2527,48 @@ class RdfExplorer {
     buildHierarchyFromEdges(edges, rootId) {
         const childMap = new Map();
         const parentMap = new Map();
-
+    
         edges.forEach(e => {
             const src = typeof e.source === 'object' ? e.source.id : e.source;
             const tgt = typeof e.target === 'object' ? e.target.id : e.target;
-
-            if (!childMap.has(src)) childMap.set(src, new Set());
-            childMap.get(src).add(tgt);
-
-            if (!parentMap.has(tgt)) parentMap.set(tgt, new Set());
-            parentMap.get(tgt).add(src);
+    
+            if (!childMap.has(src)) childMap.set(src, []);
+            childMap.get(src).push({ id: tgt, predicate: e.predicate });
+    
+            if (!parentMap.has(tgt)) parentMap.set(tgt, []);
+            parentMap.get(tgt).push({ id: src, predicate: e.predicate });
         });
-
+    
         const visited = new Set();
-
+    
         const build = (nodeId) => {
             if (visited.has(nodeId)) return null;
             visited.add(nodeId);
-
+    
             const children = [];
-
+    
+            // Parcours enfants (sortants)
             if (childMap.has(nodeId)) {
-                for (const childId of childMap.get(nodeId)) {
+                for (const { id: childId, predicate } of childMap.get(nodeId)) {
                     const childNode = build(childId);
-                    if (childNode) children.push(childNode);
+                    if (childNode) {
+                        childNode.predicateFromParent = predicate; // 🔥 ajouter le prédicat
+                        children.push(childNode);
+                    }
                 }
             }
-
+    
+            // Parcours parents (entrants)
             if (parentMap.has(nodeId)) {
-                for (const parentId of parentMap.get(nodeId)) {
+                for (const { id: parentId, predicate } of parentMap.get(nodeId)) {
                     const parentNode = build(parentId);
-                    if (parentNode) children.push(parentNode);
+                    if (parentNode) {
+                        parentNode.predicateFromParent = predicate; // 🔥 ajouter le prédicat
+                        children.push(parentNode);
+                    }
                 }
             }
-
+    
             const nodeObj = this.nodeMap.get(nodeId);
             return {
                 name: this.extractLabel(nodeId),
@@ -2571,9 +2579,9 @@ class RdfExplorer {
                 children
             };
         };
-
+    
         return build(rootId);
-    }
+    }    
 
     buildHierarchyFromStartNodeAll(startNodeId, maxDepth = 3) {
         const visited = new Set();
@@ -2645,20 +2653,17 @@ class RdfExplorer {
     }
 
     renderTree(hierarchyData) {
-        // Mode d'emploi :
-        // Rend l'arbre hiérarchique en ajustant la hauteur pour éviter les chevauchements
-
         d3.select("#graphContainer").selectAll("*").remove();
-
+    
         const container = document.getElementById('graphContainer');
         const width = container.getBoundingClientRect().width;
         const height = container.getBoundingClientRect().height;
-
+    
         const root = d3.hierarchy(hierarchyData);
         const nodeCount = root.descendants().length;
         const minSpacing = 40;
         const neededHeight = Math.max(height, nodeCount * minSpacing);
-
+    
         this.svg = d3.select("#graphContainer")
             .append("svg")
             .attr("width", width)
@@ -2672,13 +2677,13 @@ class RdfExplorer {
                         this.updateMiniMap(this.visibleNodes, this.visibleLinks);
                     })
             );
-
+    
         this.svg.append('g').attr('class', 'zoom-group')
             .attr('transform', 'translate(50,50)');
-
+    
         const treeLayout = d3.tree().size([neededHeight, width - 100]);
         treeLayout(root);
-
+    
         const colorScale = this.getColorScale();
         const sizeAccessor = d => {
             if (this.nodeSizeMode === 'fixed') return 1;
@@ -2691,7 +2696,8 @@ class RdfExplorer {
             : d3.scaleLinear()
                 .domain(d3.extent(this.graph.nodes, sizeAccessor))
                 .range([8, 30]);
-
+    
+        // 🔥 Appliquer la couleur par prédicat
         this.svg.select('.zoom-group').selectAll('line')
             .data(root.links())
             .enter()
@@ -2700,9 +2706,12 @@ class RdfExplorer {
             .attr('y1', d => d.source.x)
             .attr('x2', d => d.target.y)
             .attr('y2', d => d.target.x)
-            .attr('stroke', '#9ca3af')
+            .attr('stroke', d => {
+                const pred = d.target.data.predicateFromParent;
+                return this.predicateColorMap.get(pred) || '#9ca3af';
+            })
             .attr('stroke-width', 2);
-
+    
         this.svg.select('.zoom-group').selectAll('circle')
             .data(root.descendants())
             .enter()
@@ -2718,7 +2727,7 @@ class RdfExplorer {
             })
             .attr('stroke', 'white')
             .attr('stroke-width', 2);
-
+    
         this.svg.select('.zoom-group').selectAll('text')
             .data(root.descendants())
             .enter()
@@ -2727,8 +2736,7 @@ class RdfExplorer {
             .attr('y', d => d.x + 4)
             .text(d => d.data.name)
             .attr('font-size', '10px');
-    }
-
+    }    
 }
 
 //Demarrage app
