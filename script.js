@@ -108,6 +108,8 @@ class RdfExplorer {
     }
 
     init() {
+        //Mode d'emploi : 
+        // Initialise l'application en configurant les écouteurs d'événements et le graphe de base
         this.setupEventListeners();
         this.updateExampleSelect();
         this.initializeGraph();
@@ -711,6 +713,8 @@ class RdfExplorer {
 
 
     extractActivePredicates() {
+        //Mode d'emploi : 
+        // Extrait et affiche la liste des prédicats du graphe sous forme de cases à cocher
         const predicateSet = new Set(this.graph.triples.map(t => t.predicate));
         const container = document.getElementById('predicatePanelContent');
         const group = document.getElementById('predicateCheckboxes');
@@ -757,6 +761,8 @@ class RdfExplorer {
     }
 
     extractActiveTypes() {
+        //Mode d'emploi : 
+        // Extrait et affiche la liste des types RDF du graphe sous forme de cases à cocher
         const typeSet = new Set(this.graph.nodes.map(n => n.type));
         const container = document.getElementById('rdfTypesCheckboxes');
         if (!container) return;
@@ -1373,6 +1379,8 @@ class RdfExplorer {
     }
 
     exportVisibleRDFandConfig() {
+        //Mode d'emploi : 
+        // Exporte les données RDF visibles et la configuration actuelle au format TTL et JSON
         const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
 
         const visibleTriples = this.graph.triples.filter(t => {
@@ -1424,6 +1432,8 @@ class RdfExplorer {
     }
 
     async loadConfigFile(file) {
+        //Mode d'emploi : 
+        // Charge un fichier de configuration JSON pour restaurer l'état de l'application
         try {
             const content = await file.text();
             const config = JSON.parse(content);
@@ -1502,6 +1512,7 @@ class RdfExplorer {
     }
 
     showAutocomplete(inputElement, type) {
+        //Mode d'emploi : 
         // Affiche une liste de suggestions pour la saisie de nœuds
 
         const input = inputElement.value.trim().toLowerCase();
@@ -1902,6 +1913,8 @@ class RdfExplorer {
 
 
     dfs(current, target, path, graph, visited, paths, maxDepth = 20) {
+        //Mode d'emploi : 
+        // Algorithme de parcours en profondeur pour trouver tous les chemins entre deux nœuds
         if (path.length > maxDepth) return;
         if (current === target) {
             paths.push([...path]);
@@ -2169,6 +2182,8 @@ class RdfExplorer {
 
 
     convertSparqlResultsToTriples(results, isExpand = false, nodeId = null) {
+        //Mode d'emploi : 
+        // Convertit les résultats de requête SPARQL en triplets RDF pour le graphe
         const triples = [];
 
         const variables = results.head.vars;  // récupère la liste des colonnes
@@ -2254,6 +2269,8 @@ class RdfExplorer {
     }
 
     updateExpandButtonState() {
+        //Mode d'emploi : 
+        // Active ou désactive les boutons d'extension SPARQL selon le contexte du graphe
         const expandBtn = document.getElementById('expandSparqlBtn');
         const expandFilterBtn = document.getElementById('expandFilterSparqlBtn');
         const addAllNeighborsBtn = document.getElementById('addAllNeighborsSparqlBtn'); // AJOUT
@@ -2282,6 +2299,8 @@ class RdfExplorer {
 
 
     async expandAndFilterSelectedNode() {
+        //Mode d'emploi : 
+        // Remplace le graphe actuel par les voisins directs du nœud sélectionné
         if (!this.selectedNode) {
             alert("Veuillez d'abord sélectionner un nœud.");
             return;
@@ -2327,6 +2346,8 @@ class RdfExplorer {
     }
 
     async enrichWithTypes(newTriples) {
+        //Mode d'emploi : 
+        // Enrichit les triplets avec les informations de type RDF des nouveaux nœuds
         const uniqueNodes = new Set();
 
         newTriples.forEach(t => {
@@ -2362,6 +2383,8 @@ class RdfExplorer {
     }
 
     async addAllNeighborsOfSelectedNode() {
+        //Mode d'emploi : 
+        // Ajoute tous les voisins du nœud sélectionné au graphe actuel via SPARQL
         if (!this.isSparqlGraph) {
             alert("Le graphe actuel ne provient pas d'une requête SPARQL. Impossible d'ajouter des voisins.");
             return;
@@ -2409,6 +2432,8 @@ class RdfExplorer {
     }
 
     hideNodeInView(nodeId) {
+        //Mode d'emploi : 
+        // Masque visuellement un nœud et ses arêtes associées dans la vue du graphe
         // Cache le cercle du nœud
         this.svg.selectAll('.nodes circle')
             .filter(n => n.id === nodeId)
@@ -2444,6 +2469,8 @@ class RdfExplorer {
     }
 
     updateExampleSelect() {
+        //Mode d'emploi : 
+        // Met à jour la liste des exemples de requêtes SPARQL selon l'endpoint sélectionné
         const endpoint = document.getElementById('endpointInput').value;
         const examples = this.exampleQueries[endpoint] || [];
         const exampleSelect = document.getElementById('exampleSelect');
@@ -2477,6 +2504,8 @@ class RdfExplorer {
     }
 
     computeMinimalSpanningTree() {
+        //Mode d'emploi : 
+        // Calcule un arbre couvrant minimal pour l'affichage hiérarchique en mode arbre
         if (!this.startNode) {
             alert("Veuillez sélectionner un nœud de départ.");
             return [];
@@ -2553,6 +2582,8 @@ class RdfExplorer {
 
 
     buildHierarchyFromEdges(edges, rootId) {
+        //Mode d'emploi : 
+        // Construit une structure hiérarchique d'arbre à partir d'arêtes et d'un nœud racine
         const childMap = new Map();
         const parentMap = new Map();
     
@@ -2612,6 +2643,8 @@ class RdfExplorer {
     }    
 
     buildHierarchyFromStartNodeAll(startNodeId, maxDepth = 3) {
+        //Mode d'emploi : 
+        // Construit une hiérarchie complète en explorant tous les voisins à partir d'un nœud
         const visited = new Set();
 
         const recurse = (nodeId, depth) => {
@@ -2641,6 +2674,8 @@ class RdfExplorer {
     }
 
     renderTreeWithFilters(hierarchyData) {
+        //Mode d'emploi : 
+        // Applique les filtres actifs aux données hiérarchiques avant de rendre l'arbre
         const applyFilters = (node) => {
             const isStartNode = node.id === this.startNode?.id;
             const isHidden = this.hiddenNodes.has(node.id);
@@ -2681,6 +2716,8 @@ class RdfExplorer {
     }
 
     renderTree(hierarchyData) {
+        //Mode d'emploi : 
+        // Affiche la visualisation en mode arbre avec D3.js à partir de données hiérarchiques
         d3.select("#graphContainer").selectAll("*").remove();
     
         const container = document.getElementById('graphContainer');
