@@ -56,6 +56,9 @@ class RdfExplorer {
         this.revAdjList = new Map();
         this.labelMap = new Map();
 
+        //Noeud sélectionné
+        this.selectedNode = null;
+
         //SPARQL
         this.isSparqlGraph = false;
 
