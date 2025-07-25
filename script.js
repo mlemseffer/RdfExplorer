@@ -1,5 +1,5 @@
 class RdfExplorer {
-    //Constructeur par defaut de l'application
+    //Constructeur par defaut de l'application, unique constructeur
     constructor() {
         this.graph = {
             nodes: [],
