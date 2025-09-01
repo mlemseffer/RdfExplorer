@@ -352,7 +352,7 @@ class RdfExplorer {
                     if (treeBtn) {
                         treeBtn.textContent = '🌲 Afficher l\'arbre';
                     }
-                    
+
                     // Réactiver les boutons désactivés en mode arbre
                     const depthExploreBtn = document.getElementById('depthExploreBtn');
                     const subGraphBtn = document.getElementById('SubGraphBtn');
@@ -2589,26 +2589,26 @@ class RdfExplorer {
         // Construit une structure hiérarchique d'arbre à partir d'arêtes et d'un nœud racine
         const childMap = new Map();
         const parentMap = new Map();
-    
+
         edges.forEach(e => {
             const src = typeof e.source === 'object' ? e.source.id : e.source;
             const tgt = typeof e.target === 'object' ? e.target.id : e.target;
-    
+
             if (!childMap.has(src)) childMap.set(src, []);
             childMap.get(src).push({ id: tgt, predicate: e.predicate });
-    
+
             if (!parentMap.has(tgt)) parentMap.set(tgt, []);
             parentMap.get(tgt).push({ id: src, predicate: e.predicate });
         });
-    
+
         const visited = new Set();
-    
+
         const build = (nodeId) => {
             if (visited.has(nodeId)) return null;
             visited.add(nodeId);
-    
+
             const children = [];
-    
+
             // Parcours enfants (sortants)
             if (childMap.has(nodeId)) {
                 for (const { id: childId, predicate } of childMap.get(nodeId)) {
@@ -2619,7 +2619,7 @@ class RdfExplorer {
                     }
                 }
             }
-    
+
             // Parcours parents (entrants)
             if (parentMap.has(nodeId)) {
                 for (const { id: parentId, predicate } of parentMap.get(nodeId)) {
@@ -2630,7 +2630,7 @@ class RdfExplorer {
                     }
                 }
             }
-    
+
             const nodeObj = this.nodeMap.get(nodeId);
             return {
                 name: this.extractLabel(nodeId),
@@ -2641,9 +2641,9 @@ class RdfExplorer {
                 children
             };
         };
-    
+
         return build(rootId);
-    }    
+    }
 
     buildHierarchyFromStartNodeAll(startNodeId, maxDepth = 3) {
         //Mode d'emploi : 
@@ -2722,16 +2722,16 @@ class RdfExplorer {
         //Mode d'emploi : 
         // Affiche la visualisation en mode arbre avec D3.js à partir de données hiérarchiques
         d3.select("#graphContainer").selectAll("*").remove();
-    
+
         const container = document.getElementById('graphContainer');
         const width = container.getBoundingClientRect().width;
         const height = container.getBoundingClientRect().height;
-    
+
         const root = d3.hierarchy(hierarchyData);
         const nodeCount = root.descendants().length;
         const minSpacing = 40;
         const neededHeight = Math.max(height, nodeCount * minSpacing);
-    
+
         this.svg = d3.select("#graphContainer")
             .append("svg")
             .attr("width", width)
@@ -2745,13 +2745,13 @@ class RdfExplorer {
                         this.updateMiniMap(this.visibleNodes, this.visibleLinks);
                     })
             );
-    
+
         this.svg.append('g').attr('class', 'zoom-group')
             .attr('transform', 'translate(50,50)');
-    
+
         const treeLayout = d3.tree().size([neededHeight, width - 100]);
         treeLayout(root);
-    
+
         const colorScale = this.getColorScale();
         const sizeAccessor = d => {
             if (this.nodeSizeMode === 'fixed') return 1;
@@ -2764,7 +2764,7 @@ class RdfExplorer {
             : d3.scaleLinear()
                 .domain(d3.extent(this.graph.nodes, sizeAccessor))
                 .range([8, 30]);
-    
+
         // 🔥 Appliquer la couleur par prédicat
         this.svg.select('.zoom-group').selectAll('line')
             .data(root.links())
@@ -2779,7 +2779,7 @@ class RdfExplorer {
                 return this.predicateColorMap.get(pred) || '#9ca3af';
             })
             .attr('stroke-width', 2);
-    
+
         this.svg.select('.zoom-group').selectAll('circle')
             .data(root.descendants())
             .enter()
@@ -2795,7 +2795,7 @@ class RdfExplorer {
             })
             .attr('stroke', 'white')
             .attr('stroke-width', 2);
-    
+
         this.svg.select('.zoom-group').selectAll('text')
             .data(root.descendants())
             .enter()
@@ -2804,7 +2804,7 @@ class RdfExplorer {
             .attr('y', d => d.x + 4)
             .text(d => d.data.name)
             .attr('font-size', '10px');
-    }    
+    }
 }
 
 //Demarrage app
@@ -2813,4 +2813,54 @@ document.addEventListener('DOMContentLoaded', () => {
     // Lorsque le DOM est prêt, on initialise l'application en créant un explorateur RDF
 
     new RdfExplorer();
+    // === Mode sombre (indépendant) ===
+    (function () {
+        const root = document.documentElement;
+        const THEME_KEY = "rdfexplorer-theme";
+        const btn = document.getElementById("toggleThemeBtn");
+
+        function applyTheme(mode) {
+            if (mode === "dark") {
+                root.classList.add("dark-mode");
+            } else {
+                root.classList.remove("dark-mode");
+            }
+            updateBtnLabel();
+        }
+
+        function updateBtnLabel() {
+            if (!btn) return;
+            const isDark = root.classList.contains("dark-mode");
+            btn.textContent = isDark ? "☀️ Mode clair" : "🌙 Mode sombre";
+        }
+
+        // Charger le thème sauvegardé
+        try {
+            const saved = localStorage.getItem(THEME_KEY) || "light";
+            applyTheme(saved);
+        } catch (_) {
+            applyTheme("light");
+        }
+
+        // Clic bouton
+        if (btn) {
+            btn.addEventListener("click", () => {
+                const isDark = !root.classList.contains("dark-mode");
+                applyTheme(isDark ? "dark" : "light");
+                try {
+                    localStorage.setItem(THEME_KEY, isDark ? "dark" : "light");
+                } catch (_) { }
+            });
+        }
+
+        // Raccourci clavier Ctrl/Cmd + J
+        document.addEventListener("keydown", (e) => {
+            const mod = e.ctrlKey || e.metaKey;
+            if (mod && (e.key === "j" || e.key === "J")) {
+                e.preventDefault();
+                if (btn) btn.click();
+            }
+        });
+    })();
+
 });
