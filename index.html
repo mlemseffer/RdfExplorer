@@ -22,6 +22,9 @@
                 <input type="file" id="fileInput" accept=".ttl" style="display: none;">
                 <button class="btn btn-primary" id="exportRDFConfigBtn">📤 Exporter (RDF+Config)</button>
                 <button class="btn btn-primary" id="exportSVGBtn">📤 Exporter SVG</button>
+                <!-- Nouveau : bouton mode sombre -->
+                <button class="btn btn-primary" id="toggleThemeBtn" title="Basculer mode sombre (Ctrl/Cmd + J)">🌙 Mode
+                    sombre</button>
             </div>
         </header>
 
@@ -36,8 +39,8 @@
                         <input type="range" id="degreeRangeInput" class="range-input" min="0" max="10" value="1">
                         <div class="range-labels" id="degreeRangeLabels">
                             <span>0</span>
-                            <span>TODO</span>
-                            <span>TODO</span>
+                            <span>milieu</span>
+                            <span>max</span>
                         </div>
                     </div>
 
@@ -115,11 +118,10 @@
                         <input type="range" class="range-input" id="depthRange">
                         <div class="range-labels" id="depthRangeLabels">
                             <span>1</span>
-                            <span>TODO</span>
-                            <span>TODO</span>
+                            <span>milieu</span>
+                            <span>max</span>
                         </div>
                     </div>
-
 
                     <button class="btn btn-secondary" id="depthExploreBtn">🎯 Explorer en profondeur</button>
                     <button class="btn btn-secondary" id="SubGraphBtn">🕸️​ Afficher le sous graphe</button>
@@ -211,7 +213,6 @@ SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100"></textarea>
                     <button id="addAllNeighborsSparqlBtn" class="btn btn-secondary">🏠 Ajouter tous les voisins</button>
                 </div>
             </div>
-
 
             <!-- Statistiques -->
             <div class="panel" id="stats-panel">
@@ -306,6 +307,20 @@ SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100"></textarea>
                     <div class="node-preview">
                         <svg id="miniMapSvg" width="100%" height="100%"></svg>
                     </div>
+                </div>
+            </div>
+
+            <!-- Aide rapide -->
+            <div class="panel">
+                <div class="panel-header">❓ Aide</div>
+                <div class="panel-content small">
+                    <ol>
+                        <li>Importer un fichier RDF (.ttl) ou lancer une requête SPARQL.</li>
+                        <li>Choisir un nœud de départ puis explorer (profondeur / sous-graphe / arbre).</li>
+                        <li>Utiliser les filtres (types, prédicats, degré min) pour clarifier.</li>
+                        <li>Exporter en SVG ou RDF+Config si besoin.</li>
+                        <li>Basculer en mode sombre avec 🌙 dans le header.</li>
+                    </ol>
                 </div>
             </div>
         </aside>
