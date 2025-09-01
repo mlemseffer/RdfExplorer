@@ -1,16 +1,60 @@
+/* Reset & base */
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
 
-body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: #f5f7fa;
-    height: 100vh;
-    overflow: hidden;
+:root {
+    --bg: #f5f7fa;
+    --panel-bg: #ffffff;
+    --panel-border: #e1e8ed;
+    --text: #2d3748;
+    --muted: #4a5568;
+    --muted-2: #6b7280;
+    --brand-1: #667eea;
+    --brand-2: #764ba2;
+    --btn-secondary-bg: #f8fafc;
+    --btn-secondary-text: #4a5568;
+    --btn-secondary-border: #d1d5db;
+    --overlay-bg: rgba(255, 255, 255, 0.95);
+    --shadow: rgba(0, 0, 0, 0.1);
+    --gradient-graph: radial-gradient(circle at 50% 50%, #fafbfc 0%, #f4f6f8 100%);
+    --legend-chip-border: rgba(0, 0, 0, 0.08);
 }
 
+.dark-mode {
+    --bg: #0f1220;
+    --panel-bg: #15182a;
+    --panel-border: #232744;
+    --text: #e6e8ef;
+    --muted: #c5c7d3;
+    --muted-2: #a5a8b6;
+    --brand-1: #7b8cff;
+    --brand-2: #9a6bff;
+    --btn-secondary-bg: #1b1f36;
+    --btn-secondary-text: #e6e8ef;
+    --btn-secondary-border: #2b3156;
+    --overlay-bg: rgba(21, 24, 42, 0.95);
+    --shadow: rgba(0, 0, 0, 0.45);
+    --gradient-graph: radial-gradient(circle at 50% 50%, #12162a 0%, #0f1220 100%);
+    --legend-chip-border: rgba(255, 255, 255, 0.12);
+}
+
+html,
+body {
+    height: 100%;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: var(--bg);
+    height: 100vh;
+    overflow: hidden;
+    color: var(--text);
+}
+
+/* Layout */
 .app-container {
     display: grid;
     grid-template-areas:
@@ -20,17 +64,18 @@ body {
     grid-template-columns: 280px 1fr 250px;
     grid-template-rows: 60px 1fr;
     height: 100vh;
-    position: relative; 
+    position: relative;
 }
 
+/* Header */
 .header {
     grid-area: header;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, var(--brand-1) 0%, var(--brand-2) 100%);
     color: white;
     display: flex;
     align-items: center;
     padding: 0 20px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 10px var(--shadow);
 }
 
 .header h1 {
@@ -44,75 +89,99 @@ body {
     gap: 10px;
 }
 
+/* Buttons */
 .btn {
     padding: 8px 16px;
     border: none;
     border-radius: 6px;
     cursor: pointer;
     font-size: 14px;
-    transition: all 0.2s;
+    transition: transform .15s ease, background .2s ease, box-shadow .2s ease;
+    will-change: transform;
+}
+
+.btn:active {
+    transform: scale(0.98);
 }
 
 .btn-primary {
     background: rgba(255, 255, 255, 0.2);
     color: white;
-    border: 1px solid rgba(255, 255, 255, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    box-shadow: 0 1px 2px var(--shadow);
 }
 
 .btn-primary:hover {
     background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-1px);
 }
 
 .btn-secondary {
-    background: #f8fafc;
-    color: #4a5568;
-    border: 1px solid #d1d5db;
+    background: var(--btn-secondary-bg);
+    color: var(--btn-secondary-text);
+    border: 1px solid var(--btn-secondary-border);
     width: 100%;
     margin-bottom: 8px;
+    box-shadow: 0 1px 2px var(--shadow);
 }
 
 .btn-secondary:hover {
     background: #e2e8f0;
 }
 
+.dark-mode .btn-secondary:hover {
+    background: #222642;
+}
+
+/* Side & Toolbar panels */
 .sidebar {
     grid-area: sidebar;
-    background: white;
-    border-right: 1px solid #e1e8ed;
+    background: var(--panel-bg);
+    border-right: 1px solid var(--panel-border);
     overflow-y: auto;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+    box-shadow: 2px 0 10px var(--shadow);
 }
 
 .toolbar {
     grid-area: toolbar;
-    background: white;
-    border-left: 1px solid #e1e8ed;
+    background: var(--panel-bg);
+    border-left: 1px solid var(--panel-border);
     overflow-y: auto;
-    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.05);
+    box-shadow: -2px 0 10px var(--shadow);
     position: relative;
 }
 
 .panel {
     margin: 15px;
-    background: white;
-    border: 1px solid #e1e8ed;
+    background: var(--panel-bg);
+    border: 1px solid var(--panel-border);
     border-radius: 8px;
     overflow: hidden;
 }
 
 .panel-header {
-    background: #f8fafc;
+    background: rgba(0, 0, 0, 0.02);
     padding: 12px 15px;
-    border-bottom: 1px solid #e1e8ed;
+    border-bottom: 1px solid var(--panel-border);
     font-weight: 600;
-    color: #2d3748;
+    color: var(--text);
     font-size: 14px;
+}
+
+.dark-mode .panel-header {
+    background: rgba(255, 255, 255, 0.03);
 }
 
 .panel-content {
     padding: 15px;
 }
 
+.small {
+    font-size: 12px;
+    color: var(--muted-2);
+}
+
+/* Forms */
 .form-group {
     margin-bottom: 15px;
 }
@@ -121,26 +190,28 @@ body {
     display: block;
     margin-bottom: 5px;
     font-size: 13px;
-    color: #4a5568;
+    color: var(--muted);
     font-weight: 500;
 }
 
 .form-control {
     width: 100%;
     padding: 8px 12px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--btn-secondary-border);
     border-radius: 6px;
     font-size: 14px;
+    background: var(--panel-bg);
+    color: var(--text);
 }
 
 .form-control:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: var(--brand-1);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
 }
 
 .checkbox-group {
-    max-height: 120px;
+    max-height: 140px;
     overflow-y: auto;
 }
 
@@ -159,22 +230,25 @@ body {
     margin: 0;
     font-size: 13px;
     cursor: pointer;
+    color: var(--text);
 }
 
+/* Main area */
 .main-area {
     grid-area: main;
-    background: white;
+    background: var(--panel-bg);
     position: relative;
-    border: 1px solid #e1e8ed;
+    border: 1px solid var(--panel-border);
     margin: 10px;
     border-radius: 8px;
     overflow: hidden;
 }
 
+/* Graph container & overlays */
 .graph-container {
     width: 100%;
     height: 100%;
-    background: radial-gradient(circle at 50% 50%, #fafbfc 0%, #f4f6f8 100%);
+    background: var(--gradient-graph);
     position: relative;
 }
 
@@ -182,12 +256,13 @@ body {
     position: absolute;
     top: 15px;
     left: 15px;
-    background: rgba(255, 255, 255, 0.95);
+    background: var(--overlay-bg);
     padding: 10px 15px;
     border-radius: 6px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 2px 8px var(--shadow);
     font-size: 13px;
-    color: #4a5568;
+    color: var(--muted);
+    backdrop-filter: blur(4px);
 }
 
 .stats-item {
@@ -195,23 +270,30 @@ body {
     justify-content: space-between;
     margin-bottom: 8px;
     font-size: 13px;
+    color: var(--muted);
 }
 
 .stats-value {
     font-weight: 600;
-    color: #667eea;
+    color: var(--brand-1);
 }
 
+/* Minimap */
 .node-preview {
     width: 100%;
     height: 150px;
-    background: #f8fafc;
-    border: 1px solid #e1e8ed;
+    background: rgba(0, 0, 0, 0.03);
+    border: 1px solid var(--panel-border);
     border-radius: 6px;
     position: relative;
     overflow: hidden;
 }
 
+.dark-mode .node-preview {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+/* Range */
 .range-input {
     width: 100%;
     margin: 8px 0;
@@ -221,10 +303,11 @@ body {
     display: flex;
     justify-content: space-between;
     font-size: 11px;
-    color: #6b7280;
+    color: var(--muted-2);
     margin-top: 5px;
 }
 
+/* Legends */
 .color-legend {
     display: flex;
     flex-wrap: wrap;
@@ -236,49 +319,52 @@ body {
     display: flex;
     align-items: center;
     font-size: 11px;
+    color: var(--muted);
+    border: 1px solid var(--legend-chip-border);
+    border-radius: 999px;
+    padding: 2px 8px;
 }
 
 .legend-color {
     width: 12px;
     height: 12px;
-    border-radius: 2px;
-    margin-right: 5px;
+    border-radius: 50%;
+    margin-right: 6px;
+    border: 1px solid var(--legend-chip-border);
 }
 
+/* SPARQL textarea */
 #sparqlQueryInput {
-    height: 150px; /* ou toute autre valeur souhaitée */
-    resize: vertical; /* permet à l’utilisateur d’agrandir manuellement si souhaité */
+    height: 150px;
+    resize: vertical;
 }
 
-#endpointInput {
-    font-size: 13px;
-    padding: 6px 10px;
-    margin-bottom: 8px;
-}
-
+/* Disabled button state */
 .disabled-button {
     opacity: 0.5;
     cursor: not-allowed;
 }
 
+/* Loading overlay */
 .loading-overlay {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(255, 255, 255, 0.8);
+    inset: 0;
+    background: rgba(255, 255, 255, 0.75);
     display: flex;
     align-items: center;
     justify-content: center;
     z-index: 999;
 }
 
+.dark-mode .loading-overlay {
+    background: rgba(15, 18, 32, 0.75);
+}
+
 .spinner {
     width: 50px;
     height: 50px;
     border: 6px solid #ccc;
-    border-top-color: #667eea;
+    border-top-color: var(--brand-1);
     border-radius: 50%;
     animation: spin 1s linear infinite;
 }
@@ -289,12 +375,59 @@ body {
     }
 }
 
+/* Resize handle */
 .resize-handle {
     width: 8px;
     cursor: ew-resize;
     position: absolute;
     top: 0;
     bottom: 0;
-    left: calc(100% - 250px - 8px); 
+    left: calc(100% - 250px - 8px);
     z-index: 100;
+}
+
+/* Graph SVG niceties (sans toucher au JS) */
+.graph-container svg .nodes circle {
+    transition: filter .15s ease, transform .15s ease;
+    /* halo très léger pour lisibilité (sur la plupart des thèmes) */
+    filter: drop-shadow(0 0 0 rgba(0, 0, 0, 0));
+}
+
+.graph-container svg .nodes circle:hover {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.25));
+}
+
+.dark-mode .graph-container svg .nodes circle:hover {
+    filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.15));
+}
+
+/* Meilleur contraste de labels dans l’overlay et mini-textes */
+.graph-container .graph-overlay,
+.panel .panel-header,
+.checkbox-item label,
+.stats-item span {
+    user-select: none;
+}
+
+/* Scrollbars discrètes */
+.sidebar,
+.toolbar,
+.checkbox-group {
+    scrollbar-width: thin;
+    scrollbar-color: var(--brand-1) transparent;
+}
+
+.sidebar::-webkit-scrollbar,
+.toolbar::-webkit-scrollbar,
+.checkbox-group::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.sidebar::-webkit-scrollbar-thumb,
+.toolbar::-webkit-scrollbar-thumb,
+.checkbox-group::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--brand-1), var(--brand-2));
+    border-radius: 8px;
 }
