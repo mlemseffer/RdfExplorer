@@ -299,6 +299,17 @@ SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100"></textarea>
                     </div>
 
                 </div>
+                <div class="form-group">
+                    <label for="clusterModeSelect">Clustering</label>
+                    <select class="form-control" id="clusterModeSelect">
+                        <option value="none">Aucun</option>
+                        <option value="type">Par type RDF</option>
+                        <option value="louvain">Communautés (Louvain)</option>
+                    </select>
+                    <div style="font-size:11px;color:var(--muted-2);margin-top:6px;">
+                        Regroupe spatialement les nœuds par catégorie.
+                    </div>
+                </div>
             </div>
 
             <!-- Aperçu mini-graphe -->
