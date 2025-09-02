@@ -29,6 +29,12 @@ class RdfExplorer {
         this.nodeColorMode = 'type';
         this.edgeColorMode = 'predicate';
 
+        // ➕ Clustering
+        // none | type | louvain
+        this.clusterMode = 'none';
+        this.clusterAssignments = new Map(); // nodeId -> clusterKey (string)
+        this.clusterCenters = new Map();     // clusterKey -> {x,y}
+
         //Attributs de l'exploration
         this.startNodeInput = document.getElementById('startNodeInput');
         this.startNode = null;
@@ -49,7 +55,6 @@ class RdfExplorer {
         this.subgraphLinks = [];
         this.subgraphRootNode = null;
 
-
         //Optimisation
         this.nodeMap = new Map();
         this.adjList = new Map();
@@ -64,7 +69,6 @@ class RdfExplorer {
         this.currentAbortController = null;
 
         //Ne pas recalculer à chaque fois toute la légende
-
         this.globalPredicates = new Set();
         this.globalTypes = new Set();
         this.typeColorMap = new Map();
@@ -322,6 +326,8 @@ class RdfExplorer {
             this.updateEdgeColors(); // appliquer sans relancer tout renderGraph
         });
 
+
+
         //Bouton pour lancer la requête SPARQL saisie
         document.getElementById('runSparqlBtn').addEventListener('click', async () => {
             const loadingOverlay = document.getElementById('loadingOverlay');
@@ -557,6 +563,47 @@ class RdfExplorer {
         if (cancelBtn) cancelBtn.addEventListener('click', () => {
             if (this.currentAbortController) this.currentAbortController.abort();
         });
+
+        //Clustering
+        // On l'ajoute sous le sélecteur "Couleur des arêtes"
+        const apparencePanel = document.querySelector('.panel .panel-header')
+            ? Array.from(document.querySelectorAll('.panel .panel-header'))
+                .find(h => h.textContent.includes('🎨'))
+                .parentElement
+            : null;
+
+        if (apparencePanel) {
+            const container = apparencePanel.querySelector('.panel-content');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'form-group';
+            wrapper.innerHTML = `
+            <label for="clusterModeSelect">Clustering</label>
+            <select class="form-control" id="clusterModeSelect">
+                <option value="none">Aucun</option>
+                <option value="type">Par type RDF</option>
+                <option value="louvain">Communautés (Louvain)</option>
+            </select>
+            <div style="font-size:11px;color:var(--muted-2);margin-top:6px;">
+                Regroupe spatialement les nœuds par catégorie.
+            </div>
+        `;
+            container.appendChild(wrapper);
+
+            const clusterSelect = wrapper.querySelector('#clusterModeSelect');
+            clusterSelect.addEventListener('change', (e) => {
+                this.clusterMode = e.target.value;
+                // recalcul d’un éventuel partitionnement
+                if (this.clusterMode === 'type') {
+                    this.clusterAssignments = this.computeClustersByType();
+                } else if (this.clusterMode === 'louvain') {
+                    this.clusterAssignments = this.computeCommunitiesLPA(); // implémentation Louvain-like
+                } else {
+                    this.clusterAssignments.clear();
+                    this.clusterCenters.clear();
+                }
+                this.renderGraph();
+            });
+        }
     }
 
     async loadRDFFile(file) {
@@ -970,10 +1017,22 @@ class RdfExplorer {
                 .domain(d3.extent(sourceNodes, sizeAccessor))
                 .range([8, 30]);
 
+        // ⚙️ Simulation
         this.simulation = d3.forceSimulation(visibleNodes)
             .force('link', d3.forceLink(visibleLinks).id(d => d.id).distance(100))
             .force('charge', d3.forceManyBody().strength(this.gravityForce))
             .force('center', d3.forceCenter(width / 2, height / 2));
+
+        // ➕ Appliquer un regroupement si demandé
+        if (this.clusterMode !== 'none') {
+            // (re)calcul des clusters si besoin (cas où l’utilisateur change les filtres)
+            if (this.clusterMode === 'type') {
+                this.clusterAssignments = this.computeClustersByType();
+            } else if (this.clusterMode === 'louvain') {
+                this.clusterAssignments = this.computeCommunitiesLPA();
+            }
+            this.applyClusteringForces(this.simulation, width, height);
+        }
 
         const pauseBtn = document.getElementById('toggleSimulationBtn');
         if (this.simulationPaused) {
@@ -1013,7 +1072,6 @@ class RdfExplorer {
             .data(visibleNodes)
             .enter().append('circle')
             .attr('r', d => {
-                //AUGMENTATION DU NOEUD D’ORIGINE
                 const baseSize = this.nodeSizeMode === 'fixed' ? sizeScale() : sizeScale(sizeAccessor(d));
                 if (this.isSubgraphMode && d === this.subgraphRootNode) return baseSize * 5.0;
                 return baseSize;
@@ -1084,10 +1142,10 @@ class RdfExplorer {
             overlay.innerHTML = `📊 Graphe: ${visibleNodes.length} nœuds • ${visibleLinks.length} arêtes • <span id="zoom">Zoom : 100%</span>`;
         }
 
-
         this.updateNodeColors();
         this.updateEdgeColors();
     }
+
 
     selectNode(node) {
         //Mode d'emploi : 
@@ -2861,6 +2919,140 @@ class RdfExplorer {
             .text(d => d.data.name)
             .attr('font-size', '10px');
     }
+
+    applyClusteringForces(simulation, width, height) {
+        // Construire les centres des clusters de manière stable (grille)
+        const assignments = this.clusterAssignments; // Map(nodeId -> clusterKey)
+        if (!assignments || assignments.size === 0) return;
+
+        const clusters = Array.from(new Set(Array.from(assignments.values())));
+        // calcul de centres si absent ou si le set de clusters a changé
+        const prevKeys = new Set(this.clusterCenters.keys());
+        let needRecompute = clusters.length !== this.clusterCenters.size ||
+            clusters.some(k => !prevKeys.has(k));
+
+        if (needRecompute) {
+            this.clusterCenters = this.getClusterCenters(clusters, width, height);
+        }
+
+        // Force qui attire chaque nœud vers le centre de son cluster
+        const strength = 0.15; // pull vers centre (ajuster au besoin)
+        simulation
+            .force('clusterX', d3.forceX(d => {
+                const key = this.clusterAssignments.get(d.id);
+                const c = this.clusterCenters.get(key);
+                return c ? c.x : width / 2;
+            }).strength(strength))
+            .force('clusterY', d3.forceY(d => {
+                const key = this.clusterAssignments.get(d.id);
+                const c = this.clusterCenters.get(key);
+                return c ? c.y : height / 2;
+            }).strength(strength));
+    }
+
+    getClusterCenters(clusters, width, height) {
+        const centers = new Map();
+        const n = clusters.length;
+        const cols = Math.ceil(Math.sqrt(n));
+        const rows = Math.ceil(n / cols);
+
+        const padding = 120;
+        const cellW = Math.max(200, (width - padding * 2) / cols);
+        const cellH = Math.max(200, (height - padding * 2) / rows);
+
+        clusters.forEach((key, i) => {
+            const r = Math.floor(i / cols);
+            const c = i % cols;
+            const x = padding + c * cellW + cellW / 2;
+            const y = padding + r * cellH + cellH / 2;
+            centers.set(key, { x, y });
+        });
+        return centers;
+    }
+
+    computeClustersByType() {
+        const map = new Map();
+        this.visibleNodes.forEach(n => {
+            const key = n.type || 'unknown';
+            map.set(n.id, key);
+        });
+        return map;
+    }
+
+    computeCommunitiesLPA() {
+        // Construire un graphe non orienté pondéré (poids = nombre d'arêtes entre deux nœuds visibles)
+        const neighbors = new Map(); // nodeId -> Map(neiId -> weight)
+        const addEdge = (a, b) => {
+            if (!neighbors.has(a)) neighbors.set(a, new Map());
+            const m = neighbors.get(a);
+            m.set(b, (m.get(b) || 0) + 1);
+        };
+
+        const visibleIds = new Set(this.visibleNodes.map(n => n.id));
+        this.visibleLinks.forEach(l => {
+            const s = (typeof l.source === 'object') ? l.source.id : l.source;
+            const t = (typeof l.target === 'object') ? l.target.id : l.target;
+            if (visibleIds.has(s) && visibleIds.has(t)) {
+                addEdge(s, t);
+                addEdge(t, s);
+            }
+        });
+
+        // Initialisation des labels: chaque nœud = son propre label
+        const label = new Map();
+        this.visibleNodes.forEach(n => label.set(n.id, n.id));
+
+        // Itérations LPA
+        const MAX_IT = 20;
+        let changed = true, it = 0;
+        while (changed && it < MAX_IT) {
+            changed = false;
+            it++;
+
+            // itérer les nœuds dans un ordre aléatoire
+            const order = this.visibleNodes.map(n => n.id);
+            for (let i = order.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [order[i], order[j]] = [order[j], order[i]];
+            }
+
+            for (const id of order) {
+                const neigh = neighbors.get(id);
+                if (!neigh || neigh.size === 0) continue;
+
+                // score par label voisin (pondéré)
+                const scores = new Map();
+                neigh.forEach((w, nb) => {
+                    const lab = label.get(nb);
+                    scores.set(lab, (scores.get(lab) || 0) + w);
+                });
+
+                // label le plus fréquent/pondéré
+                let best = label.get(id);
+                let bestScore = -Infinity;
+                scores.forEach((v, k) => {
+                    if (v > bestScore || (v === bestScore && k < best)) {
+                        bestScore = v;
+                        best = k;
+                    }
+                });
+
+                if (best !== label.get(id)) {
+                    label.set(id, best);
+                    changed = true;
+                }
+            }
+        }
+
+        // Normaliser: transformer le label final en clés compactes ("C1","C2",…)
+        const uniq = Array.from(new Set(label.values()));
+        const mapKey = new Map(uniq.map((k, i) => [k, `C${i + 1}`]));
+
+        const assignment = new Map();
+        this.visibleNodes.forEach(n => assignment.set(n.id, mapKey.get(label.get(n.id))));
+        return assignment;
+    }
+
 }
 
 //Demarrage app
