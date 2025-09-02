@@ -2909,7 +2909,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
 
-        // Raccourci clavier Ctrl/Cmd + J
+        // Raccourci clavier Ctrl + J
         document.addEventListener("keydown", (e) => {
             const mod = e.ctrlKey || e.metaKey;
             if (mod && (e.key === "j" || e.key === "J")) {
