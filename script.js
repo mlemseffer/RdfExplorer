@@ -564,46 +564,19 @@ class RdfExplorer {
             if (this.currentAbortController) this.currentAbortController.abort();
         });
 
-        //Clustering
-        // On l'ajoute sous le sélecteur "Couleur des arêtes"
-        const apparencePanel = document.querySelector('.panel .panel-header')
-            ? Array.from(document.querySelectorAll('.panel .panel-header'))
-                .find(h => h.textContent.includes('🎨'))
-                .parentElement
-            : null;
+        document.getElementById('clusterModeSelect').addEventListener('change', (e) => {
+            this.clusterMode = e.target.value;
+            if (this.clusterMode === 'type') {
+                this.clusterAssignments = this.computeClustersByType();
+            } else if (this.clusterMode === 'louvain') {
+                this.clusterAssignments = this.computeCommunitiesLPA();
+            } else {
+                this.clusterAssignments.clear();
+                this.clusterCenters.clear();
+            }
+            this.renderGraph();
+        });
 
-        if (apparencePanel) {
-            const container = apparencePanel.querySelector('.panel-content');
-            const wrapper = document.createElement('div');
-            wrapper.className = 'form-group';
-            wrapper.innerHTML = `
-            <label for="clusterModeSelect">Clustering</label>
-            <select class="form-control" id="clusterModeSelect">
-                <option value="none">Aucun</option>
-                <option value="type">Par type RDF</option>
-                <option value="louvain">Communautés (Louvain)</option>
-            </select>
-            <div style="font-size:11px;color:var(--muted-2);margin-top:6px;">
-                Regroupe spatialement les nœuds par catégorie.
-            </div>
-        `;
-            container.appendChild(wrapper);
-
-            const clusterSelect = wrapper.querySelector('#clusterModeSelect');
-            clusterSelect.addEventListener('change', (e) => {
-                this.clusterMode = e.target.value;
-                // recalcul d’un éventuel partitionnement
-                if (this.clusterMode === 'type') {
-                    this.clusterAssignments = this.computeClustersByType();
-                } else if (this.clusterMode === 'louvain') {
-                    this.clusterAssignments = this.computeCommunitiesLPA(); // implémentation Louvain-like
-                } else {
-                    this.clusterAssignments.clear();
-                    this.clusterCenters.clear();
-                }
-                this.renderGraph();
-            });
-        }
     }
 
     async loadRDFFile(file) {
