@@ -61,6 +61,7 @@ class RdfExplorer {
 
         //SPARQL
         this.isSparqlGraph = false;
+        this.currentAbortController = null;
 
         //Ne pas recalculer à chaque fois toute la légende
 
@@ -452,12 +453,19 @@ class RdfExplorer {
         });
 
         //Bouton pour l'arbre
+        // Bouton pour l'arbre (corrigé : ne supprime pas le graphe si aucun nœud de départ n'est choisi)
         const treeBtn = document.getElementById('TreeGraphBtn');
         treeBtn.addEventListener('click', () => {
             const depthExploreBtn = document.getElementById('depthExploreBtn');
             const subGraphBtn = document.getElementById('SubGraphBtn');
 
             if (!this.isTreeMode) {
+                // ✅ CORRECTION : vérifier AVANT toute suppression du SVG
+                if (!this.startNode) {
+                    alert("Veuillez sélectionner un nœud de départ.");
+                    return; // on quitte sans toucher au graphe -> il ne disparaît plus
+                }
+
                 // ➤ MODE ARBRE : stopper la simulation
                 if (this.simulation) {
                     this.simulation.stop();
@@ -466,12 +474,8 @@ class RdfExplorer {
                     if (pauseBtn) pauseBtn.textContent = '▶️ Reprendre Simulation';
                 }
 
+                // On peut maintenant retirer le SVG (on sait qu'on a un startNode)
                 d3.select('#graphContainer svg').remove();
-
-                if (!this.startNode) {
-                    alert("Veuillez sélectionner un nœud de départ.");
-                    return;
-                }
 
                 const mstEdges = this.computeMinimalSpanningTree();
                 this.treeData = this.buildHierarchyFromEdges(mstEdges, this.startNode.id);
@@ -487,8 +491,10 @@ class RdfExplorer {
                 subGraphBtn.classList.add('disabled-button');
 
             } else {
+                // ➤ RETOUR AU MODE GRAPHE
                 d3.select('#graphContainer svg').remove();
 
+                // Récréer les overlays au besoin
                 if (!document.getElementById('graphOverlay')) {
                     const graphOverlay = document.createElement('div');
                     graphOverlay.id = 'graphOverlay';
@@ -506,6 +512,7 @@ class RdfExplorer {
                     document.getElementById('graphContainer').appendChild(loadingOverlay);
                 }
 
+                // Recréer le SVG et le zoom
                 this.svg = d3.select('#graphContainer')
                     .append('svg')
                     .attr('width', '100%')
@@ -543,6 +550,12 @@ class RdfExplorer {
                 depthExploreBtn.classList.remove('disabled-button');
                 subGraphBtn.classList.remove('disabled-button');
             }
+        });
+
+        //Bouton annuler
+        const cancelBtn = document.getElementById('cancelSparqlBtn');
+        if (cancelBtn) cancelBtn.addEventListener('click', () => {
+            if (this.currentAbortController) this.currentAbortController.abort();
         });
     }
 
@@ -859,6 +872,22 @@ class RdfExplorer {
         this.svg.select('.zoom-group').append('g').attr('class', 'links');
         this.svg.select('.zoom-group').append('g').attr('class', 'nodes');
 
+        // (dans initializeGraph(), juste après avoir créé this.svg et les groupes)
+        if (this.svg.select('defs#arrow-defs').empty()) {
+            const defs = this.svg.append('defs').attr('id', 'arrow-defs');
+            defs.append('marker')
+                .attr('id', 'arrowhead')
+                .attr('viewBox', '0 -5 10 10')
+                .attr('refX', 16)   // décale la pointe au bord du nœud
+                .attr('refY', 0)
+                .attr('markerWidth', 6)
+                .attr('markerHeight', 6)
+                .attr('orient', 'auto')
+                .append('path')
+                .attr('d', 'M0,-5L10,0L0,5')
+                .attr('fill', '#9ca3af');
+        }
+
         this.updateDepthSlider(10);
     }
 
@@ -964,7 +993,8 @@ class RdfExplorer {
             .enter().append('line')
             .attr('stroke', '#9ca3af')
             .attr('stroke-width', 2)
-            .attr('stroke-opacity', 0.7);
+            .attr('stroke-opacity', 0.7)
+            .attr('marker-end', 'url(#arrowhead)');
 
         if (this.showEdgeLabels) {
             this.svg.select('.zoom-group .links')
@@ -1472,7 +1502,8 @@ class RdfExplorer {
             document.getElementById('nodeSizeModeSelect').value = {
                 'in': 'Par degré entrant',
                 'out': 'Par degré sortant',
-                'total': 'Par degré total'
+                'total': 'Par degré total',
+                'fixed': 'Fixe (même taille)'
             }[this.nodeSizeMode];
 
             this.renderGraph();
@@ -1642,70 +1673,82 @@ class RdfExplorer {
     }
 
     async exploreFromStartNode(maxDepth = 3, delay = 1000) {
-        //Mode d'emploi :
-        //Méthode pour lancer l'exploration en profondeur
+        // Mode d'emploi :
+        // Parcours en largeur (BFS) depuis le nœud de départ, par couches.
+        // Utilise adjList / revAdjList pour calculer les voisins, et restreint
+        // le parcours au graphe actuellement visible (filtres & sous-graphe) via
+        // this.visibleNodes / this.visibleLinks.
 
-        // Vérifie que le nœud de départ est défini
+        // 1) Préconditions
         if (!this.startNode) {
             alert("Veuillez sélectionner un nœud de départ.");
             return;
         }
 
-        const direction = this.exploreDirectionSelect.value; // "Entrantes", "Sortantes", ou "Entrantes + Sortantes"
-        const visited = new Set();
+        const direction = this.exploreDirectionSelect.value; // "Entrantes", "Sortantes", "Entrantes + Sortantes"
+
+        // 2) Index rapides du graphe VISIBLE (respecte prédicats & filtres)
+        const visibleNodeIds = new Set(this.visibleNodes.map(n => n.id));
+        const visibleEdgeSet = new Set(
+            this.visibleLinks.map(l => {
+                const src = typeof l.source === 'object' ? l.source.id : l.source;
+                const tgt = typeof l.target === 'object' ? l.target.id : l.target;
+                return `${src}->${tgt}`;
+            })
+        );
+
+        // 3) BFS par couches
         const layers = [];
-        const queue = [{ node: this.startNode, depth: 0 }];
-        visited.add(this.startNode.id);
+        const visited = new Set([this.startNode.id]);
+        const queue = [{ id: this.startNode.id, depth: 0 }];
 
         while (queue.length > 0) {
-            const { node, depth } = queue.shift();
+            const { id, depth } = queue.shift();
+            const node = this.nodeMap.get(id);
             if (!layers[depth]) layers[depth] = [];
             layers[depth].push(node);
 
-            if (depth < maxDepth) {
-                const neighbors = this.visibleLinks.flatMap(link => {
-                    const sourceId = typeof link.source === 'object' ? link.source.id : link.source;
-                    const targetId = typeof link.target === 'object' ? link.target.id : link.target;
+            if (depth >= maxDepth) continue;
 
-                    const targetNode = typeof link.target === 'object' ? link.target : this.nodeMap.get(targetId);
+            const nextIds = new Set();
 
+            // Voisins ENTRANTS (parents) : parent -> id
+            if (direction === 'Entrantes' || direction === 'Entrantes + Sortantes') {
+                const parents = this.revAdjList.get(id) || [];
+                for (const parentId of parents) {
+                    // Respecte le graphe visible : nœud visible + arête visible parent->id
+                    if (!visibleNodeIds.has(parentId)) continue;
+                    if (!visibleEdgeSet.has(`${parentId}->${id}`)) continue;
+                    if (!visited.has(parentId)) nextIds.add(parentId);
+                }
+            }
 
-                    const neighbors = [];
+            // Voisins SORTANTS (enfants) : id -> child
+            if (direction === 'Sortantes' || direction === 'Entrantes + Sortantes') {
+                const children = this.adjList.get(id) || [];
+                for (const childId of children) {
+                    // Respecte le graphe visible : nœud visible + arête visible id->child
+                    if (!visibleNodeIds.has(childId)) continue;
+                    if (!visibleEdgeSet.has(`${id}->${childId}`)) continue;
+                    if (!visited.has(childId)) nextIds.add(childId);
+                }
+            }
 
-                    if ((direction === 'Entrantes' || direction === 'Entrantes + Sortantes') && this.revAdjList.has(node.id)) {
-                        for (const parent of this.revAdjList.get(node.id)) {
-                            if (!visited.has(parent)) neighbors.push(this.nodeMap.get(parent));
-                        }
-                    }
-                    if ((direction === 'Sortantes' || direction === 'Entrantes + Sortantes') && this.adjList.has(node.id)) {
-                        for (const child of this.adjList.get(node.id)) {
-                            if (!visited.has(child)) neighbors.push(this.nodeMap.get(child));
-                        }
-                    }
-
-
-                    return neighbors;
-                });
-
-                neighbors.forEach(n => {
-                    if (!visited.has(n.id)) {
-                        visited.add(n.id);
-                        queue.push({ node: n, depth: depth + 1 });
-                    }
-                });
+            // Enqueue voisins non visités
+            for (const nid of nextIds) {
+                visited.add(nid);
+                queue.push({ id: nid, depth: depth + 1 });
             }
         }
 
-        // Affiche visuellement chaque couche avec délai
+        // 4) Animation : surligner couche par couche
         for (let d = 0; d < layers.length; d++) {
             const currentLayer = layers[d];
             const previousLayer = d > 0 ? layers[d - 1] : [];
             this.highlightLayer(currentLayer, previousLayer);
             await new Promise(resolve => setTimeout(resolve, delay));
         }
-
     }
-
 
     highlightLayer(currentLayerNodes, previousLayerNodes) {
         //Mode d'emploi : 
@@ -2159,30 +2202,43 @@ class RdfExplorer {
     }
 
     async runSparqlRequest(query) {
-        //Mode d'emploi
-        //Lance une requête au endpoint SPARQL
         const endpointInput = document.getElementById('endpointInput');
         const endpointUrl = endpointInput?.value?.trim() || "http://localhost:3030/rdfexplorer/sparql";
 
-        const fullUrl = endpointUrl + "?query=" + encodeURIComponent(query);
+        // AbortController
+        this.currentAbortController = new AbortController();
 
-        const response = await fetch(fullUrl, {
-            method: 'GET',
-            headers: {
-                'Accept': 'application/sparql-results+json'
-            }
-        });
-
-        if (!response.ok) {
-            const text = await response.text();
-            throw new Error(`Erreur SPARQL ${response.status} :\n${text}`);
+        // 1) POST (évite les limites d’URL)
+        try {
+            const resp = await fetch(endpointUrl, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/sparql-results+json',
+                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
+                },
+                body: 'query=' + encodeURIComponent(query),
+                signal: this.currentAbortController.signal
+            });
+            if (!resp.ok) throw new Error(await resp.text());
+            this.isSparqlGraph = true;
+            this.updateExpandButtonState();
+            return await resp.json();
+        } catch (e) {
+            // 2) Fallback GET (certaines configs CORS)
+            const fullUrl = endpointUrl + "?query=" + encodeURIComponent(query);
+            const resp = await fetch(fullUrl, {
+                method: 'GET',
+                headers: { 'Accept': 'application/sparql-results+json' },
+                signal: this.currentAbortController.signal
+            });
+            if (!resp.ok) throw new Error(`Erreur SPARQL ${resp.status} :\n${await resp.text()}`);
+            this.isSparqlGraph = true;
+            this.updateExpandButtonState();
+            return await resp.json();
+        } finally {
+            this.currentAbortController = null;
         }
-
-        this.isSparqlGraph = true;
-        this.updateExpandButtonState();
-        return await response.json();
     }
-
 
     convertSparqlResultsToTriples(results, isExpand = false, nodeId = null) {
         //Mode d'emploi : 
