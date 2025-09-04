@@ -466,7 +466,6 @@ class RdfExplorer {
             const subGraphBtn = document.getElementById('SubGraphBtn');
 
             if (!this.isTreeMode) {
-                // ✅ CORRECTION : vérifier AVANT toute suppression du SVG
                 if (!this.startNode) {
                     alert("Veuillez sélectionner un nœud de départ.");
                     return; // on quitte sans toucher au graphe -> il ne disparaît plus
@@ -564,19 +563,46 @@ class RdfExplorer {
             if (this.currentAbortController) this.currentAbortController.abort();
         });
 
-        document.getElementById('clusterModeSelect').addEventListener('change', (e) => {
-            this.clusterMode = e.target.value;
-            if (this.clusterMode === 'type') {
-                this.clusterAssignments = this.computeClustersByType();
-            } else if (this.clusterMode === 'louvain') {
-                this.clusterAssignments = this.computeCommunitiesLPA();
-            } else {
-                this.clusterAssignments.clear();
-                this.clusterCenters.clear();
-            }
-            this.renderGraph();
-        });
+        //Clustering
+        // On l'ajoute sous le sélecteur "Couleur des arêtes"
+        const apparencePanel = document.querySelector('.panel .panel-header')
+            ? Array.from(document.querySelectorAll('.panel .panel-header'))
+                .find(h => h.textContent.includes('🎨'))
+                .parentElement
+            : null;
 
+        if (apparencePanel) {
+            const container = apparencePanel.querySelector('.panel-content');
+            const wrapper = document.createElement('div');
+            wrapper.className = 'form-group';
+            wrapper.innerHTML = `
+            <label for="clusterModeSelect">Clustering</label>
+            <select class="form-control" id="clusterModeSelect">
+                <option value="none">Aucun</option>
+                <option value="type">Par type RDF</option>
+                <option value="louvain">Communautés (Louvain)</option>
+            </select>
+            <div style="font-size:11px;color:var(--muted-2);margin-top:6px;">
+                Regroupe spatialement les nœuds par catégorie.
+            </div>
+        `;
+            container.appendChild(wrapper);
+
+            const clusterSelect = wrapper.querySelector('#clusterModeSelect');
+            clusterSelect.addEventListener('change', (e) => {
+                this.clusterMode = e.target.value;
+                // recalcul d’un éventuel partitionnement
+                if (this.clusterMode === 'type') {
+                    this.clusterAssignments = this.computeClustersByType();
+                } else if (this.clusterMode === 'louvain') {
+                    this.clusterAssignments = this.computeCommunitiesLPA(); // implémentation Louvain-like
+                } else {
+                    this.clusterAssignments.clear();
+                    this.clusterCenters.clear();
+                }
+                this.renderGraph();
+            });
+        }
     }
 
     async loadRDFFile(file) {
@@ -990,7 +1016,7 @@ class RdfExplorer {
                 .domain(d3.extent(sourceNodes, sizeAccessor))
                 .range([8, 30]);
 
-        // ⚙️ Simulation
+        //Simulation
         this.simulation = d3.forceSimulation(visibleNodes)
             .force('link', d3.forceLink(visibleLinks).id(d => d.id).distance(100))
             .force('charge', d3.forceManyBody().strength(this.gravityForce))
@@ -2340,10 +2366,10 @@ class RdfExplorer {
                 return;
             }
 
-            // 🔥 Récupérer les types des nouveaux nœuds
+            //  Récupérer les types des nouveaux nœuds
             await this.enrichWithTypes(newTriples);
 
-            // 🔗 Fusionner avec le graphe existant
+            // Fusionner avec le graphe existant
             this.graph.triples = this.graph.triples.concat(newTriples);
             this.buildGraphFromTriples(this.graph.triples);
             this.extractActivePredicates();
@@ -2416,10 +2442,10 @@ class RdfExplorer {
                 return;
             }
 
-            // 🔥 Récupérer les types des nouveaux nœuds
+            //  Récupérer les types des nouveaux nœuds
             await this.enrichWithTypes(newTriples);
 
-            // 💥 Remplacer complètement le graphe
+            //  Remplacer complètement le graphe
             this.deleteGraph();
             this.graph.triples = newTriples;
             this.buildGraphFromTriples(newTriples);
@@ -2852,7 +2878,7 @@ class RdfExplorer {
                 .domain(d3.extent(this.graph.nodes, sizeAccessor))
                 .range([8, 30]);
 
-        // 🔥 Appliquer la couleur par prédicat
+        // Appliquer la couleur par prédicat
         this.svg.select('.zoom-group').selectAll('line')
             .data(root.links())
             .enter()
@@ -3085,4 +3111,3 @@ document.addEventListener('DOMContentLoaded', () => {
     })();
 
 });
-
