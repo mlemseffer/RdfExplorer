@@ -111,6 +111,10 @@ class RdfExplorer {
         this.isTreeMode = false;
         this.treeData = null;
 
+        //Composantes connexes
+        this.componentIdByNode = new Map();
+        this.components = [];
+
         //Demarrage de l'application
         this.init();
     }
@@ -226,6 +230,7 @@ class RdfExplorer {
             if (value.includes('entrant')) this.nodeColorMode = 'in';
             else if (value.includes('sortant')) this.nodeColorMode = 'out';
             else if (value.includes('total')) this.nodeColorMode = 'total';
+            else if (value.toLowerCase().includes('composante')) this.nodeColorMode = 'component';
             else this.nodeColorMode = 'type';
             this.updateNodeColors();
         });
@@ -980,6 +985,8 @@ class RdfExplorer {
 
         this.visibleNodes = visibleNodes;
         this.visibleLinks = visibleLinks;
+
+        this.computeConnectedComponents(true);
 
         const width = this.svg.node().getBoundingClientRect().width;
         const height = this.svg.node().getBoundingClientRect().height;
@@ -2028,6 +2035,17 @@ class RdfExplorer {
                 .domain(types)
                 .range(types.map(type => this.typeColorMap.get(type)));
             return scale;
+        } else if (this.nodeColorMode === 'component') {
+            // S’assure d’avoir des composantes à jour
+            if (!this.components?.length) this.computeConnectedComponents(true);
+            const compIds = Array.from(new Set(this.visibleNodes.map(n => this.componentIdByNode.get(n.id)))).sort((a, b) => a - b);
+            // Palette déjà présente: this.colorPalette
+            const scale = d3.scaleOrdinal()
+                .domain(compIds)
+                .range(compIds.map((_, i) => this.colorPalette[i % this.colorPalette.length]));
+            // On retourne une fonction (id de composante) -> couleur
+            scale.isComponentScale = true;
+            return scale;
         } else {
             let degreeAccessor;
             if (this.nodeColorMode === 'in') degreeAccessor = d => d.inDegree;
@@ -2053,10 +2071,21 @@ class RdfExplorer {
                 if (this.nodeColorMode === 'type') return colorScale(d.type);
                 if (this.nodeColorMode === 'in') return colorScale(d.inDegree);
                 if (this.nodeColorMode === 'out') return colorScale(d.outDegree);
-                return colorScale(d.inDegree + d.outDegree);
+                if (this.nodeColorMode === 'total') return colorScale(d.inDegree + d.outDegree);
+                if (this.nodeColorMode === 'component') {
+                    const cid = this.componentIdByNode.get(d.id);
+                    return colorScale(cid);
+                }
+                return '#ccc';
             });
 
-        this.updatecolorNodeLegend(colorScale);
+        if (this.nodeColorMode === 'component') {
+            const legendContainer = document.getElementById('colorNodeLegend');
+            legendContainer.innerHTML = '';
+        } else {
+            this.updatecolorNodeLegend(colorScale);
+        }
+
     }
 
     toggleSimulation() {
@@ -3032,6 +3061,61 @@ class RdfExplorer {
         this.visibleNodes.forEach(n => assignment.set(n.id, mapKey.get(label.get(n.id))));
         return assignment;
     }
+
+    computeConnectedComponents(useVisible = true) {
+        // On travaille sur le graphe VISIBLE (respecte filtres) si possible
+        const nodes = (useVisible && this.visibleNodes?.length) ? this.visibleNodes : this.graph.nodes;
+        const links = (useVisible && this.visibleLinks?.length) ? this.visibleLinks : this.graph.links;
+
+        const idSet = new Set(nodes.map(n => n.id));
+        // Graphe non orienté pour composantes connexes
+        const adj = new Map();
+        nodes.forEach(n => adj.set(n.id, new Set()));
+        links.forEach(l => {
+            const s = typeof l.source === 'object' ? l.source.id : l.source;
+            const t = typeof l.target === 'object' ? l.target.id : l.target;
+            if (idSet.has(s) && idSet.has(t)) {
+                adj.get(s).add(t);
+                adj.get(t).add(s);
+            }
+        });
+
+        this.components = [];
+        this.componentIdByNode.clear();
+
+        const visited = new Set();
+        let compIdx = 0;
+
+        for (const nid of idSet) {
+            if (visited.has(nid)) continue;
+            // BFS / DFS
+            const comp = [];
+            const stack = [nid];
+            visited.add(nid);
+
+            while (stack.length) {
+                const u = stack.pop();
+                comp.push(u);
+                this.componentIdByNode.set(u, compIdx);
+
+                const nei = adj.get(u) || new Set();
+                for (const v of nei) {
+                    if (!visited.has(v)) {
+                        visited.add(v);
+                        stack.push(v);
+                    }
+                }
+            }
+            this.components.push(comp);
+            compIdx++;
+        }
+
+        // Tri décroissant par taille (optionnel pour lecture)
+        this.components.sort((a, b) => b.length - a.length);
+
+        return this.components;
+    }
+
 
 }
 
