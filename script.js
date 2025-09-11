@@ -29,7 +29,7 @@ class RdfExplorer {
         this.nodeColorMode = 'type';
         this.edgeColorMode = 'predicate';
 
-        // ➕ Clustering
+        //Clustering
         // none | type | louvain
         this.clusterMode = 'none';
         this.clusterAssignments = new Map(); // nodeId -> clusterKey (string)
@@ -464,7 +464,6 @@ class RdfExplorer {
         });
 
         //Bouton pour l'arbre
-        // Bouton pour l'arbre (corrigé : ne supprime pas le graphe si aucun nœud de départ n'est choisi)
         const treeBtn = document.getElementById('TreeGraphBtn');
         treeBtn.addEventListener('click', () => {
             const depthExploreBtn = document.getElementById('depthExploreBtn');
@@ -473,10 +472,10 @@ class RdfExplorer {
             if (!this.isTreeMode) {
                 if (!this.startNode) {
                     alert("Veuillez sélectionner un nœud de départ.");
-                    return; // on quitte sans toucher au graphe -> il ne disparaît plus
+                    return; 
                 }
 
-                // ➤ MODE ARBRE : stopper la simulation
+                // MODE ARBRE : stopper la simulation
                 if (this.simulation) {
                     this.simulation.stop();
                     this.simulationPaused = true;
@@ -501,7 +500,7 @@ class RdfExplorer {
                 subGraphBtn.classList.add('disabled-button');
 
             } else {
-                // ➤ RETOUR AU MODE GRAPHE
+                // RETOUR AU MODE GRAPHE
                 d3.select('#graphContainer svg').remove();
 
                 // Récréer les overlays au besoin
@@ -1010,7 +1009,7 @@ class RdfExplorer {
             .force('charge', d3.forceManyBody().strength(this.gravityForce))
             .force('center', d3.forceCenter(width / 2, height / 2));
 
-        // ➕ Appliquer un regroupement si demandé
+        // Appliquer un regroupement si demandé
         if (this.clusterMode !== 'none') {
             // (re)calcul des clusters si besoin (cas où l’utilisateur change les filtres)
             if (this.clusterMode === 'type') {
