@@ -1,129 +1,158 @@
 # 🕸️ RdfExplorer
 
-**RdfExplorer** est une application web interactive permettant d'explorer, visualiser et filtrer dynamiquement des graphes RDF à partir de fichiers au format Turtle (`.ttl`) ou via un endpoint SPARQL (comme Apache Jena Fuseki).  
-Elle utilise **D3.js** pour la visualisation, **N3.js** pour le parsing RDF, et propose une interface riche orientée exploration et requêtage.
+[![CI](https://github.com/OWNER/REPO/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/REPO/actions/workflows/ci.yml)
+
+**RdfExplorer** est une application web interactive pour explorer, visualiser et
+filtrer des graphes RDF, à partir de fichiers Turtle (`.ttl`) ou d'un endpoint
+SPARQL (Fuseki, DBpedia, Wikidata, INSEE…).
+
+La visualisation s'appuie sur **D3.js** (force-directed layout, tree, mini-map),
+le parsing RDF sur **N3.js**, et le tout est packagé avec une chaîne moderne
+**Vite + ESLint + Prettier + Vitest + Playwright + GitHub Actions + Docker**.
 
 ---
 
-## 🚀 Fonctionnalités
+## ✨ Fonctionnalités
 
-- Chargement de fichiers `.ttl` (Turtle) RDF
-- Analyse et parsing RDF avec `N3.js`
-- Visualisation dynamique avec `D3.js`
-- Exploration interactive par degré, profondeur, type RDF ou prédicat
-- Requêtage SPARQL via endpoint externe (DBpedia ou Fuseki local)
-- Statistiques dynamiques (nombre de nœuds, prédicats, types, etc.)
-- Recherche du chemin le plus court ou de tous les chemins entre deux nœuds
-- Export en `.ttl`, `.json` et `.svg`
+- Import de fichiers Turtle (`.ttl`) et de fichiers de configuration `.json`
+- Exécution de requêtes SPARQL (POST avec repli GET, gestion d'annulation)
+- Filtrage dynamique par prédicat, type RDF, degré, et masquage de nœuds isolés
+- Exploration par profondeur (BFS), plus court chemin, énumération de chemins
+- Mode sous-graphe et mode arbre (MST), clustering (par type / Louvain LPA)
+- Légendes interactives, mini-map, mode sombre persistant, exports SVG / TTL / JSON
 
 ---
 
-## 📁 Structure du projet
+## 🚀 Démarrage rapide
+
+### Prérequis
+
+- [Node.js](https://nodejs.org/) ≥ 20 (voir [.nvmrc](.nvmrc))
+- npm ≥ 10
+
+### Installation
+
+```bash
+npm install
+```
+
+### Lancer en développement (HMR)
+
+```bash
+npm run dev
+```
+
+L'application s'ouvre sur [http://localhost:5173](http://localhost:5173).
+
+### Build de production
+
+```bash
+npm run build      # génère ./dist
+npm run preview    # sert ./dist sur http://localhost:4173
+```
+
+---
+
+## 🧪 Tests
+
+| Commande                | Description                                              |
+| ----------------------- | -------------------------------------------------------- |
+| `npm test`              | Tests unitaires Vitest (`tests/unit`)                    |
+| `npm run test:watch`    | Mode watch                                               |
+| `npm run test:coverage` | Couverture (V8) au format texte + HTML + lcov            |
+| `npm run test:e2e`      | Tests end-to-end Playwright (Chromium)                   |
+| `npm run lint`          | Analyse statique ESLint                                  |
+| `npm run format`        | Formatte le code avec Prettier                           |
+| `npm run ci`            | Pipeline complète locale (lint + format + tests + build) |
+
+Avant le premier lancement des tests E2E :
+
+```bash
+npm run test:e2e:install
+```
+
+---
+
+## 🐳 Docker
+
+L'image se construit en deux étapes (Node 20 alpine → Nginx 1.27 alpine) :
+
+```bash
+docker build -t rdf-explorer .
+docker run --rm -p 8080:8080 rdf-explorer
+# → http://localhost:8080
+```
+
+Ou via Docker Compose :
+
+```bash
+docker compose up --build
+```
+
+Un endpoint de santé est exposé sur `/healthz`.
+
+---
+
+## ⚙️ CI/CD
+
+Deux workflows GitHub Actions sont fournis :
+
+- [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — lint, format, tests
+  unitaires, build et tests Playwright à chaque push/PR.
+- [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml) —
+  déploiement automatique sur GitHub Pages depuis `main`/`master`.
+
+Pour activer le déploiement Pages : `Settings → Pages → Source = GitHub Actions`.
+
+---
+
+## 🗂️ Structure du projet
 
 ```
 RdfExplorer/
-│
-├── index.html               # Interface principale
-├── script.js                # Logique d’analyse et de visualisation RDF
-├── style.css                # Feuilles de style
-│
-├── graphs/                  # Exemples de fichiers RDF
-│   ├── fichier_test.ttl
-│   └── test_people.ttl
-│
-├── libs/                    # Bibliothèques JS externes
-│   ├── d3.v7.min.js
-│   ├── n3.min.js
-│   └── sparql.js
+├── index.html                  # Page d'entrée (chargée par Vite)
+├── src/
+│   ├── main.js                 # Bootstrap (import du CSS, init RdfExplorer + thème)
+│   ├── app/
+│   │   └── RdfExplorer.js      # Classe principale (UI, D3, état global)
+│   ├── services/
+│   │   ├── parser.js           # Wrapper N3.js (Turtle → triples)
+│   │   └── sparql.js           # Client SPARQL + conversion résultats
+│   ├── data/
+│   │   └── exampleQueries.js   # Exemples SPARQL par endpoint
+│   ├── utils/
+│   │   ├── labels.js           # Fonctions pures (extractLabel, categorizeType…)
+│   │   └── theme.js            # Contrôleur thème clair/sombre
+│   └── styles/
+│       └── main.css            # Feuille de style unique (variables CSS)
+├── public/                     # Assets statiques copiés tel quels
+│   ├── favicon.ico
+│   └── graphs/                 # Jeux de données d'exemple (.ttl)
+├── tests/
+│   ├── unit/                   # Tests Vitest (jsdom)
+│   └── e2e/                    # Tests Playwright (Chromium)
+├── deploy/
+│   └── nginx.conf              # Configuration nginx pour l'image Docker
+├── Dockerfile / docker-compose.yml
+├── vite.config.js / vitest.config.js / playwright.config.js
+├── eslint.config.js / .prettierrc.json / .editorconfig
+└── .github/workflows/          # CI + déploiement GitHub Pages
 ```
 
 ---
 
-## 🔧 Installation & utilisation
-
-### ⚙️ Pré-requis
-
-- Un navigateur moderne (Chrome, Firefox, Edge)
-- Aucun backend requis (100% client-side)
-- (Optionnel) Serveur SPARQL local si vous utilisez Fuseki
-
-### 🚀 Lancer l’application
+## 🔌 Endpoint SPARQL local (Fuseki)
 
 ```bash
-# Clonez ou téléchargez le dépôt
-git clone https://github.com/ton-user/RdfExplorer.git
-cd RdfExplorer
-
-# Lancez simplement l'interface
-open index.html  # ou double-cliquez sur le fichier
+cd <chemin>/apache-jena-fuseki
+java -jar fuseki-server.jar
+# Créez un dataset `rdfexplorer`, chargez un .ttl, puis dans l'app :
+#   Endpoint = http://localhost:3030/rdfexplorer/sparql
+#   Exemple  = SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100
 ```
-
----
-
-## 📊 Chargement d’un graphe RDF
-
-1. Cliquez sur **📁 Importer RDF**
-2. Sélectionnez un fichier `.ttl` depuis votre disque
-3. Le graphe sera affiché automatiquement avec ses nœuds et arêtes
-
----
-
-## 🔌 Intégration avec Fuseki (SPARQL)
-
-Depuis la version récente, `RdfExplorer` permet d’interroger un **endpoint SPARQL externe**, comme [Apache Jena Fuseki](https://jena.apache.org/).
-
-### ➕ Exemple de configuration :
-
-1. Lancez Fuseki :
-
-```bash
- cd C:\rdf-tools\apache-jena-fuseki-5.4.0
- java -jar fuseki-server.jar
-```
-
-2. Créez un dataset nommé `rdfexplorer`  
-3. Chargez un fichier `.ttl` dans le **graphe par défaut**
-4. Dans l'interface RdfExplorer, entrez le endpoint :
-
-```text
-http://localhost:3030/rdfexplorer/sparql
-```
-
-5. Tapez votre requête SPARQL dans le panneau de droite :
-
-```sparql
-SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 100
-```
-
-6. Cliquez sur ▶️ **Exécuter**
-
----
-
-## ✨ Dépendances
-
-- [D3.js](https://d3js.org/)
-- [N3.js](https://github.com/rdfjs/N3.js)
-- [sparql.js](https://github.com/RubenVerborgh/SPARQL.js)
-
----
-
-## 📷 Exemple d’utilisation
-
-- Cliquez sur un nœud pour voir ses connexions
-- Utilisez les filtres (type RDF, degré, prédicat) pour ajuster l'affichage
-- Explorez le graphe à partir d’un nœud de départ avec profondeur réglable
-- Utilisez les boutons “Tous les chemins” ou “Chemin le plus court” pour visualiser les liens entre deux entités
-
----
-
-## 🧪 Jeux de données fournis
-
-- `fichier_test.ttl` : mini graphe
-- `test_people.ttl` : 500 personnes liées par `foaf:knows`
 
 ---
 
 ## 📫 Contact
 
-Pour toute question ou suggestion :  
-📧 mohamed.lemseffer@insa-lyon.fr
+mohamed.lemseffer@insa-lyon.fr

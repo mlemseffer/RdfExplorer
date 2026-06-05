@@ -1,0 +1,8 @@
+services:
+  rdf-explorer:
+    build: .
+    image: rdf-explorer:latest
+    container_name: rdf-explorer
+    restart: unless-stopped
+    ports:
+      - '8080:8080'

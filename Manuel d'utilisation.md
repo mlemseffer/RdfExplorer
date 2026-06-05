@@ -28,12 +28,12 @@
 
 ## 🖥️ Interface utilisateur
 
-| Zone | Description |
-|------|-------------|
-| **Barre supérieure** | Import/export de RDF/JSON/SVG, contrôle de la simulation |
-| **Sidebar gauche** | Filtres (type, degré, prédicats), options d’affichage |
-| **Zone principale** | Visualisation interactive du graphe |
-| **Barre droite** | Statistiques, style graphique, mini-map, infos sur les nœuds, requêtes SPARQL |
+| Zone                 | Description                                                                   |
+| -------------------- | ----------------------------------------------------------------------------- |
+| **Barre supérieure** | Import/export de RDF/JSON/SVG, contrôle de la simulation                      |
+| **Sidebar gauche**   | Filtres (type, degré, prédicats), options d’affichage                         |
+| **Zone principale**  | Visualisation interactive du graphe                                           |
+| **Barre droite**     | Statistiques, style graphique, mini-map, infos sur les nœuds, requêtes SPARQL |
 
 ---
 
@@ -56,15 +56,18 @@
 ## 🧭 Exploration dynamique
 
 ### 1. Sélection d’un nœud de départ
+
 - Tape son nom ou clique dessus
 - Sélectionne la direction des liens : `Entrantes`, `Sortantes`, `Entrantes + Sortantes`
 
 ### 2. Exploration en profondeur
+
 - Choisis une **profondeur maximale**
 - Clique sur **🎯 Explorer en profondeur**
 - Les couches du graphe s'affichent progressivement
 
 ### 3. Recherche de chemin
+
 - Indique un **nœud d’arrivée**
 - Choisis :
   - **⚡ Chemin le plus court**
@@ -96,11 +99,13 @@
 ## 📝 Requête SPARQL
 
 ### 📌 Objectif
+
 Exécuter des requêtes SPARQL dynamiques sur un endpoint distant ou local.
 
 ### 🔧 Définir le endpoint SPARQL
 
-Un champ dédié permet de spécifier une **URL de serveur SPARQL**.  
+Un champ dédié permet de spécifier une **URL de serveur SPARQL**.
+
 > 💡 Par défaut, le champ est pré-rempli avec :  
 > `http://localhost:3030/rdfexplorer/sparql`
 
@@ -140,6 +145,7 @@ Cliquez sur **▶️ Exécuter** pour interroger le graphe. Le graphe est recons
 ## 🔗 Connexion à Apache Jena Fuseki (optionnel)
 
 ### 📦 Prérequis :
+
 - [Java 11 ou 17](https://adoptium.net)
 - [Fuseki 5.4.0](https://jena.apache.org/download/)
 
@@ -162,9 +168,9 @@ Cliquez sur **▶️ Exécuter** pour interroger le graphe. Le graphe est recons
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
 <http://example.org/person#Alice> a foaf:Person ;
-    foaf:name "Alice" ;
-    foaf:knows <http://example.org/person#Bob> .
+foaf:name "Alice" ;
+foaf:knows <http://example.org/person#Bob> .
 
 <http://example.org/person#Bob> a foaf:Person ;
-    foaf:name "Bob" .
+foaf:name "Bob" .
 \`\`\`
